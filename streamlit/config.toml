@@ -1,0 +1,14 @@
+[server]
+port = 8501
+runOnSave = true
+maxUploadSize = 200
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor       = "#2E75B6"
+backgroundColor    = "#FFFFFF"
+secondaryBackgroundColor = "#F0F4F8"
+textColor          = "#1A1A2E"
+font               = "sans serif"

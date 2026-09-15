@@ -1,0 +1,45 @@
+# =============================================================================
+#  Análisis Espacial de Crecimiento Poblacional — SSIAT / SDOT-PCM
+#  requirements.txt  ·  Python 3.12  ·  Windows 10/11
+# =============================================================================
+
+# Nucleo
+numpy==2.2.6
+pandas==2.2.3
+openpyxl==3.1.5
+xlrd==2.0.2
+scipy==1.15.3
+
+# Analisis espacial
+geopandas==1.0.1
+shapely==2.0.7
+pyproj==3.7.1
+pyogrio==0.11.0
+mapclassify==2.9.0
+
+# LISA / Moran Local
+libpysal==4.12.1
+esda==2.8.2
+
+# Visualizacion cartografica
+folium==0.19.5
+branca==0.8.0
+streamlit-folium==0.25.0
+pydeck==0.9.1
+
+# Graficos
+plotly==5.24.1
+altair==5.4.1
+matplotlib==3.9.4
+seaborn==0.13.2
+
+# Dashboard
+streamlit==1.40.2
+
+# ML
+scikit-learn==1.5.2
+
+# Utilidades
+requests==2.32.3
+python-dotenv==1.0.1
+watchdog==4.0.2

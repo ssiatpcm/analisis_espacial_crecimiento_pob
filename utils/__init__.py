@@ -1,8 +1,4 @@
 """utils — Módulos utilitarios del tablero SSIAT"""
-from .calculo_tcm import calcular_tcm, calcular_tcm_dataframe, proyectar_poblacion
-from .normativa import evaluar_cumplimiento, calcular_brecha, evaluar_dataframe, COLORES_ESTADO
+from .carga_datos import cargar_dataframe, cargar_geodataframe, cargar_datos_integrados
 
-__all__ = [
-    "calcular_tcm", "calcular_tcm_dataframe", "proyectar_poblacion",
-    "evaluar_cumplimiento", "calcular_brecha", "evaluar_dataframe", "COLORES_ESTADO",
-]
+__all__ = ["cargar_dataframe", "cargar_geodataframe", "cargar_datos_integrados"]

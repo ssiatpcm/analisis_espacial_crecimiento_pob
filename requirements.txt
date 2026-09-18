@@ -1,9 +1,10 @@
 # requirements.txt — Streamlit Community Cloud
-# Soporte para shapefile (.shp) y Excel (.xlsx)
+# Análisis Espacial de Crecimiento Poblacional · SSIAT / SDOT-PCM
+# Probado con Python 3.12 en Streamlit Cloud
 
 streamlit==1.40.2
 pandas==2.2.3
-numpy==2.2.6
+numpy==1.26.4
 openpyxl==3.1.5
 geopandas==1.0.1
 shapely==2.0.7

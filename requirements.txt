@@ -1,16 +1,16 @@
 # requirements.txt — Streamlit Community Cloud
+# Versiones con wheels precompilados para Python 3.14
 # Análisis Espacial de Crecimiento Poblacional · SSIAT / SDOT-PCM
-# Probado con Python 3.12 en Streamlit Cloud
 
-streamlit==1.40.2
-pandas==2.2.3
-numpy==1.26.4
-openpyxl==3.1.5
-geopandas==1.0.1
-shapely==2.0.7
-pyproj==3.7.1
-pyogrio==0.11.0
-folium==0.19.5
-branca==0.8.0
-streamlit-folium==0.25.0
-plotly==5.24.1
+streamlit>=1.40.2
+pandas>=2.2.3
+numpy>=1.26.4
+openpyxl>=3.1.5
+shapely>=2.0.7
+pyproj>=3.7.1
+pyogrio>=0.11.0
+geopandas>=1.0.1
+folium>=0.19.5
+branca>=0.8.0
+streamlit-folium>=0.25.0
+plotly>=5.24.1

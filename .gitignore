@@ -16,3 +16,4 @@ __pycache__/
 # macOS / Windows
 .DS_Store
 Thumbs.db
+environment.yml 

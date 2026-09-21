@@ -86,7 +86,7 @@ with st.sidebar:
         ["Todos", "Solo creaciones (post-2002)", "Solo origen"],
     )
     st.markdown("---")
-    st.caption("Fuentes: INEI 2007, 2017 · Proy. 2025 · SSIAT 2026")
+    st.caption("Fuentes: INEI 2007, 2017, 2025 · Proy. 2025 · SSIAT 2026")
 
 # Aplicar filtros al DataFrame tabular
 dff = df.copy()
@@ -133,10 +133,10 @@ pob_total = dff["POB2025" if not usar_0717 else "POB2017"].sum()
 
 k1, k2, k3, k4, k5 = st.columns(5)
 for col_st, cls, label, valor, sub, color in [
-    (k1, "blue",  "🗺️ Distritos",         f"{total:,}",    "Base INEI 2017",                    "#1E40AF"),
+    (k1, "blue",  "🗺️ Distritos",         f"{total:,}",    "Base INEI 2025",                    "#1E40AF"),
     (k2, "green", "📈 Con crecimiento",    f"{n_crec:,}",   f"{n_crec/total*100:.1f}% del total", "#166534"),
     (k3, "red",   "📉 Con decrecimiento",  f"{n_decrec:,}", f"{n_decrec/total*100:.1f}% del total","#991B1B"),
-    (k4, "red",   "⚠️ Doble decrec.",      f"{n_doble:,}",  "Negativa en ambos períodos",          "#991B1B"),
+    (k4, "red",   "⚠️ Doble decrec.",      f"{n_doble:,}",  "Negativa en ambos períodos intercensales",          "#991B1B"),
     (k5, "amber", "🏗️ Creaciones",         f"{n_creac:,}",  "Post-2002",                           "#92400E"),
 ]:
     with col_st:
@@ -156,10 +156,10 @@ st.markdown("<br>", unsafe_allow_html=True)
 col_izq, col_mapa, col_der = st.columns([1.1, 1.7, 1.1])
 
 COLOR_REG = {
-    "COSTA":      "#2563EB",
-    "SIERRA":     "#EF4444",
-    "SELVA ALTA": "#F59E0B",
-    "SELVA BAJA": "#10B981",
+    "COSTA":      "#ECF007",
+    "SIERRA":     "#5E2417",
+    "SELVA ALTA": "#175E1A",
+    "SELVA BAJA": "#18C420",
 }
 
 # ── TCM por región natural ─────────────────────────────────────────────────
@@ -284,7 +284,7 @@ with col_der:
          f"<b>{len(crea_d)} creaciones</b> post-2002 con TCM "
          f"negativa en el período reciente."),
         ("blue",  "📊",
-         f"Población proyectada 2025: "
+         f"Población total Censo 2025: "
          f"<b>{df['POB2025'].sum():,.0f} hab.</b>"),
         ("green", "✅",
          f"<b>{n_crec:,} distritos</b> ({n_crec/total*100:.1f}%) "
@@ -376,7 +376,7 @@ with col_evol:
     st.plotly_chart(fig_e, use_container_width=True)
 
     st.markdown('<div class="section-title" style="margin-top:.4rem">'
-                'Comparativa 07-17 vs 17-25 · % con decrecimiento</div>',
+                'Comparativa intercensal 07-17 vs 17-25 · % con decrecimiento</div>',
                 unsafe_allow_html=True)
 
     comp = dff.groupby("REGION_NAT").agg(
@@ -387,13 +387,13 @@ with col_evol:
     fig_c = go.Figure()
     fig_c.add_trace(go.Bar(
         name="07-17", x=comp["REGION_NAT"], y=comp["p1"],
-        marker_color="#94A3B8",
+        marker_color="#4C72B0",
         text=comp["p1"].apply(lambda v: f"{v:.0f}%"),
         textposition="outside", textfont_size=9,
     ))
     fig_c.add_trace(go.Bar(
         name="17-25", x=comp["REGION_NAT"], y=comp["p2"],
-        marker_color="#EF4444",
+        marker_color="#DD8452",
         text=comp["p2"].apply(lambda v: f"{v:.0f}%"),
         textposition="outside", textfont_size=9,
     ))

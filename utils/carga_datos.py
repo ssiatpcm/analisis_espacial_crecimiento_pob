@@ -23,8 +23,8 @@ def cargar_dataframe() -> pd.DataFrame:
         UBIGEO, NOMBDEP, NOMBPROV, NOMBDIST, CAPITAL
         POB2007, POB2017, POB2025, PRY_2025
         TC_07_17  → TCM anual intercensal 2007-2017
-        TC_17_25  → TCM anual proyectada 2017-2025
-        TC_17_P25 → TCM proyectada alternativa
+        TC_17_25  → TCM anual intercensal 2017-2025
+        TC_17_P25 → TCM con población proyectada 2025
         REGION_NAT, ANIO, AMB_INT, MODALIDAD, TIPOLOGIA
 
     Columnas derivadas:

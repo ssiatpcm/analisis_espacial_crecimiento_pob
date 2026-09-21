@@ -1,6 +1,6 @@
 """
 app.py — Punto de entrada · SSIAT / SDOT-PCM
-Análisis Espacial de Crecimiento Poblacional en el Perú
+Análisis Espacial del Crecimiento Poblacional en el Perú
 """
 import streamlit as st
 
@@ -36,11 +36,11 @@ with col1:
     st.markdown("""
     ### Acerca del tablero
     Dashboard interactivo para el análisis del crecimiento y decrecimiento
-    poblacional en el Perú a escala distrital, basado en los censos INEI
-    2007 y 2017 y las proyecciones al 2025.
+    poblacional en el Perú a escala distrital y centro poblado, basado en los censos nacionales del INEI
+    2007, 2017 y 2025, y proyecciones al 2025.
 
     Los resultados se vinculan al marco normativo de demarcación territorial
-    (Ley N.° 27795 · TUO DS 134-2025-PCM).
+    (Ley N.° 27795 · TUO D.S. 134-2025-PCM).
 
     **👈 Selecciona una página en el menú lateral.**
     """)
@@ -58,5 +58,5 @@ with col2:
         st.divider()
 
 st.caption(
-    "INEI Censos 2007, 2017 · Proyecciones 2025 · SSIAT · SDOT-PCM · 2026"
+    "INEI Censos 2007, 2017 y 2025 · Proyecciones 2025 · SSIAT · SDOT-PCM · 2026"
 )

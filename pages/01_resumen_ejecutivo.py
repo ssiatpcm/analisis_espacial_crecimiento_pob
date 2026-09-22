@@ -224,17 +224,31 @@ with col_mapa:
         return "#7F1D1D"
 
     m = folium.Map(
-        location=[-9.5, -75.5], zoom_start=5,
-        tiles="CartoDB positron", prefer_canvas=True,
+        location=[-9.5, -75.5], 
+        zoom_start=5,
+        tiles=None,             # Sin tile por defecto - lo agregamos explícitamente abajo 
+        prefer_canvas=True,     # Canvas renderer: más rápido que SVG para muchos polígonos
     )
-
+ 
+    # Tile OSM explícito — sin API key, siempre disponible, sobrescribe cualquier default
+    folium.TileLayer(
+        tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        name="OpenStreetMap",
+        max_zoom=19,
+    ).add_to(m)
+    
+    # Pre-calcular colores fuera del GeoJson para evitar llamadas repetidas
+    gdf_f = gdf_f.copy()
+    gdf_f["_color"] = gdf_f[col_tcm].apply(color_tcm)
+    
     folium.GeoJson(
         gdf_f.__geo_interface__,
         style_function=lambda feat: {
-            "fillColor": color_tcm(feat["properties"].get(col_tcm)),
-            "color":       "#ffffff",
+            "fillColor": feat["properties"].get("_color", "#CBD5E1"),
+            "color":      "#ffffff",
             "weight":      0.3,
-            "fillOpacity": 0.8,
+            "fillOpacity": 0.75,
         },
         tooltip=folium.GeoJsonTooltip(
             fields    = ["NOMBDIST", "NOMBDEP", col_tcm,
@@ -242,9 +256,11 @@ with col_mapa:
             aliases   = ["Distrito", "Departamento", f"TCM {periodo}",
                          "Pob. 2017", "Región", "Tipología"],
             localize  = True,
-            sticky    = True,
+            sticky    = False, # False es más liviano que sticky=True
         ),
+        smooth_factor=2.0, # Simplifica geometrías en el navegador, menos vértices renderizados
         name="Distritos",
+        embed=False        # No embede el GeoJSON en el HTML -> carga más rápido 
     ).add_to(m)
 
     legend = """
@@ -456,7 +472,7 @@ st.download_button(
 
 st.markdown("---")
 st.caption(
-    "Fuentes: INEI Censos Nacionales 2007, 2017 · "
+    "Fuentes: INEI Censos Nacionales 2007, 2017 y 2025 · "
     "Proyecciones Poblacionales 2025 · "
     "Elaborado por SSIAT · SDOT-PCM · 2026"
 )

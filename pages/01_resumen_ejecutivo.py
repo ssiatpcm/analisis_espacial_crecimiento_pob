@@ -126,7 +126,7 @@ st.markdown(f"""
 # ══════════════════════════════════════════════════════════════════════════════
 # En 2007-2017 la base censal es 1874; en 2017-2025 es 1892. Para el cálculo de porcentajes, usamos 1847 y 1892 respectivamente 
 total     = len(dff)
-total_kpi = 1847 if usar_0717 else 1892
+total_kpi = 1874 if usar_0717 else 1892
 n_crec    = int((dff[col_tcm] > 0).sum())
 n_decrec  = int((dff[col_tcm] < 0).sum())
 n_doble   = int(((dff["TC_07_17"] < 0) & (dff["TC_17_25"] < 0)).sum())
@@ -135,7 +135,7 @@ pob_total = dff["POB2025" if not usar_0717 else "POB2017"].sum()
 
 k1, k2, k3, k4, k5 = st.columns(5)
 for col_st, cls, label, valor, sub, color in [
-    (k1, "blue",  "🗺️ Distritos",         f"{total_kpi:,}", "Base censo 2017" if usar_0717 else "Base censo 2025", "#1E40AF"),
+    (k1, "blue",  "🗺️ Distritos",          f"{total_kpi:,}", "Base censo 2017" if usar_0717 else "Base censo 2025", "#1E40AF"),
     (k2, "green", "📈 Con crecimiento",    f"{n_crec:,}",   f"{n_crec/total*100:.1f}% del total", "#166534"),
     (k3, "red",   "📉 Con decrecimiento",  f"{n_decrec:,}", f"{n_decrec/total*100:.1f}% del total","#991B1B"),
     (k4, "red",   "⚠️ Doble decrec.",      f"{n_doble:,}",  "Negativa en ambos períodos intercensales",          "#991B1B"),
@@ -244,6 +244,9 @@ with col_mapa:
     gdf_f = gdf_f.copy()
     gdf_f["_color"] = gdf_f[col_tcm].apply(color_tcm)
     
+    col_pob_mapa = "POB2017" if usar_0717 else "POB2025"
+    label_pob_mapa = "Pob. 2017" if usar_0717 else "Pob. 2025"
+
     folium.GeoJson(
         gdf_f.__geo_interface__,
         style_function=lambda feat: {
@@ -252,8 +255,6 @@ with col_mapa:
             "weight":      0.3,
             "fillOpacity": 0.75,
         },
-        col_pob_mapa = "POB2017" if usar_0717 else "POB2025"
-        label_pob_mapa = "Pob. 2017" if usar_0717 else "Pob. 2025"
         
         tooltip=folium.GeoJsonTooltip(
             fields    = ["NOMBDIST", "NOMBDEP", col_tcm,

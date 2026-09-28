@@ -118,7 +118,7 @@ st.markdown(f"""
 # FILA 1 — KPIs
 # ══════════════════════════════════════════════════════════════════════════════
 total        = len(dff)
-total_kpi    = 1847 if usar_0717 else 1892
+total_kpi    = 1874 if usar_0717 else 1892
 n_cap_crec   = int((dff[col_tcm_cap] > 0).sum())
 n_cap_decrec = int((dff[col_tcm_cap] < 0).sum())
 n_doble_cap  = int(((dff["TASA_0717"] < 0) & (dff["TASA_1725"] < 0)).sum())

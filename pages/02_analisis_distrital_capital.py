@@ -270,7 +270,8 @@ with col_mapa:
                 color = color_tcm_cap(row[col_tcm_cap])
                 col_pob_cap = "POB2017" if usar_0717 else "POB2025"
                 label_pob_cap = "Pob. 2017" if usar_0717 else "Pob. 2025"
-                pob_mostrar = row[col_pob_cap] if not pd.isna(row.get[col_pob_cap]) else pob
+                _val = row.get(col_pob_cap)
+                pob_mostrar = pob if (_val is None or pd.isna(_val) or _val == 0) else _val
                 tooltip_txt = (
                     f"<b>{row['NOMBCCPP']}</b><br>"
                     f"{row['NOMBDIST']} — {row['NOMBDEP']}<br>"

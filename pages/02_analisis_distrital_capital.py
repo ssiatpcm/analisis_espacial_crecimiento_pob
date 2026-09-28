@@ -118,6 +118,7 @@ st.markdown(f"""
 # FILA 1 — KPIs
 # ══════════════════════════════════════════════════════════════════════════════
 total        = len(dff)
+total_kpi    = 1847 if usar_0717 else 1892
 n_cap_crec   = int((dff[col_tcm_cap] > 0).sum())
 n_cap_decrec = int((dff[col_tcm_cap] < 0).sum())
 n_doble_cap  = int(((dff["TASA_0717"] < 0) & (dff["TASA_1725"] < 0)).sum())
@@ -125,14 +126,14 @@ n_suburban   = int((dff[col_dinamica] == "Capital crece / Distrito decrece").sum
 
 k1, k2, k3, k4, k5 = st.columns(5)
 for col_st, cls, label, valor, sub, color in [
-    (k1, "blue",   "🗺️ Distritos / capitales", f"{total:,}",
-     "Base INEI 2017", "#1E40AF"),
+    (k1, "blue",   "🗺️ Distritos / capitales", f"{total_kpi:,}",
+     "Base INEI 2017" if usar_0717 else "Base INEI 2025", "#1E40AF"),
     (k2, "green",  "📈 Capitales que crecen",  f"{n_cap_crec:,}",
      f"{n_cap_crec/total*100:.1f}% del total", "#166534"),
     (k3, "red",    "📉 Capitales que decrecen", f"{n_cap_decrec:,}",
      f"{n_cap_decrec/total*100:.1f}% del total", "#991B1B"),
     (k4, "amber",  "⚠️ Doble decrecimiento",   f"{n_doble_cap:,}",
-     "Capital Y distrito decrecen", "#92400E"),
+     "Capital y distrito decrecen", "#92400E"),
     (k5, "purple", "🏘️ Suburbanización",        f"{n_suburban:,}",
      "Capital crece / Distrito decrece", "#5B21B6"),
 ]:
@@ -224,7 +225,7 @@ with col_izq:
 
 # ── Mapa de capitales ───────────────────────────────────────────────────────
 with col_mapa:
-    st.markdown('<div class="section-title">Mapa de capitales distritales</div>',
+    st.markdown('<div class="section-title">Mapa de capitales</div>',
                 unsafe_allow_html=True)
 
     tab_tcm, tab_din = st.tabs(["TCM de la capital", "Dinámica capital / distrito"])
@@ -267,16 +268,20 @@ with col_mapa:
 
             if mode == "tcm":
                 color = color_tcm_cap(row[col_tcm_cap])
+                col_pob_cap = "POB2017" if usar_0717 else "POB2025"
+                label_pob_cap = "Pob. 2017" if usar_0717 else "Pob. 2025"
+                pob_mostrar = row[col_pob_cap] if not pd.isna(row.get[col_pob_cap]) else pob
                 tooltip_txt = (
                     f"<b>{row['NOMBCCPP']}</b><br>"
                     f"{row['NOMBDIST']} — {row['NOMBDEP']}<br>"
                     f"TCM capital ({periodo}): <b>{row[col_tcm_cap]:.2f}%</b><br>"
-                    f"Pob. 2017: {int(pob):,}<br>"
+                    f"{label_pob_cap}: {int(pob_mostrar):,}<br>"
                     f"Región: {row.get('REGION_NAT','')}"
                 )
             else:
                 din = row.get(col_dinamica, "Sin datos")
                 color = COLOR_DIN_MAP.get(din, "#CBD5E1")
+
                 tooltip_txt = (
                     f"<b>{row['NOMBCCPP']}</b><br>"
                     f"{row['NOMBDIST']} — {row['NOMBDEP']}<br>"
@@ -401,7 +406,7 @@ with col_tabla:
 
     tabla = dff[[
         "UBIGEO", "NOMBDIST", "NOMBDEP", "REGION_NAT", "TIPOLOGIA",
-        col_tcm_dist, col_tcm_cap, "POB2017", col_dinamica, "RANGO_POB",
+        col_tcm_dist, col_tcm_cap, "POB2017", "POB2025", col_dinamica, "RANGO_POB",
     ]].rename(columns={
         "NOMBDIST":    "Distrito",
         "NOMBDEP":     "Dpto.",
@@ -410,6 +415,7 @@ with col_tabla:
         col_tcm_dist:  "TCM distrito (%)",
         col_tcm_cap:   "TCM capital (%)",
         "POB2017":     "Pob. cap. 2017",
+        "POB2025":     "Pob. cap. 2025",
         col_dinamica:  "Dinámica",
         "RANGO_POB":   "Tamaño capital",
     })
@@ -443,6 +449,6 @@ with col_tabla:
 # ── Footer ─────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption(
-    "Fuentes: INEI Censos 2007, 2017 · Proyecciones 2025 · "
-    "capitales_censo25_1892.xlsx · SSIAT · SDOT-PCM · 2026"
+    "Fuentes: INEI Censos 2007, 2017, 2025 · Proy. 2025 · "
+    "· SSIAT · 2026"
 )

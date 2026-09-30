@@ -370,7 +370,7 @@ with col_ref:
         return "color: #64748b"
 
     st.dataframe(
-        df_var.style.applymap(
+        df_var.style.map(
             lambda v: color_var(v) if isinstance(v, int) and v != 0 else "",
             subset=["Variación"]
         ),

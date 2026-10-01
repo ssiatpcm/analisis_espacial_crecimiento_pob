@@ -8,10 +8,10 @@ Fuentes: shapefile total_distritos_1892.shp + distritos_crec_pob.xlsx
 import warnings
 warnings.filterwarnings("ignore")
 
+import io
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
 import folium
 from streamlit_folium import st_folium
 import streamlit as st
@@ -47,8 +47,8 @@ st.markdown("""
 .kpi-label { font-size:.78rem; color:#64748b; margin-bottom:.15rem; }
 .kpi-value { font-size:1.7rem; font-weight:700; line-height:1.1; }
 .kpi-sub   { font-size:.76rem; color:#94a3b8; margin-top:.2rem; }
-.alert-box { padding:.6rem 1rem; border-radius:7px; margin-bottom:.45rem;
-             font-size:.84rem; display:flex; align-items:flex-start; gap:.6rem; }
+.alert-box { padding:.55rem .9rem; border-radius:7px; margin-bottom:.4rem;
+             font-size:.82rem; display:flex; align-items:flex-start; gap:.5rem; }
 .alert-red   { background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; }
 .alert-amber { background:#FFFBEB; border:1px solid #FDE68A; color:#92400E; }
 .alert-green { background:#F0FDF4; border:1px solid #BBF7D0; color:#166534; }
@@ -63,48 +63,25 @@ st.markdown("""
 # CARGA DE DATOS
 # ══════════════════════════════════════════════════════════════════════════════
 df  = cargar_dataframe()
-gdf = cargar_datos_integrados()   # GeoDataFrame en WGS84 con atributos integrados
+gdf = cargar_datos_integrados()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR — filtros
+# SIDEBAR — solo filtro de período
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("## 🔍 Filtros")
-
     periodo = st.radio("Período de análisis",
                        ["2007 – 2017", "2017 – 2025"], index=0)
     usar_0717     = periodo == "2007 – 2017"
     col_tcm       = "TC_07_17"       if usar_0717 else "TC_17_25"
     col_tendencia = "TENDENCIA_0717" if usar_0717 else "TENDENCIA_1725"
-
-    regiones   = ["Todas"] + sorted(df["REGION_NAT"].dropna().unique().tolist())
-    region_sel = st.selectbox("Región natural", regiones)
-
-    tipo_dist = st.selectbox(
-        "Tipo de distrito",
-        ["Todos", "Solo creaciones (post-2002)", "Solo origen"],
-    )
     st.markdown("---")
-    st.caption("Fuentes: INEI 2007, 2017, 2025 · Proy. 2025 · SSIAT 2026")
+    st.caption("Fuentes: INEI 2007, 2017, 2025 · SSIAT 2026")
 
-# Aplicar filtros al DataFrame tabular
-dff = df.copy()
-if region_sel != "Todas":
-    dff = dff[dff["REGION_NAT"] == region_sel]
-if tipo_dist == "Solo creaciones (post-2002)":
-    dff = dff[dff["ES_CREACION"]]
-elif tipo_dist == "Solo origen":
-    dff = dff[~dff["ES_CREACION"]]
-
-# Aplicar filtros al GeoDataFrame (para el mapa)
+# Sin filtros de región ni tipo — usar dataset completo
+dff   = df.copy()
 gdf_f = gdf.copy()
-if region_sel != "Todas":
-    gdf_f = gdf_f[gdf_f["REGION_NAT"] == region_sel]
-if tipo_dist == "Solo creaciones (post-2002)":
-    gdf_f = gdf_f[gdf_f["ES_CREACION"] == True]
-elif tipo_dist == "Solo origen":
-    gdf_f = gdf_f[gdf_f["ES_CREACION"] == False]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -114,8 +91,7 @@ st.markdown(f"""
 <div class="header-banner">
   <h2>📊 Resumen Ejecutivo — Crecimiento Poblacional en el Perú</h2>
   <p>Período: <b>{periodo}</b> &nbsp;·&nbsp;
-     Región: <b>{region_sel}</b> &nbsp;·&nbsp;
-     Distritos: <b>{len(dff):,}</b> &nbsp;·&nbsp;
+     Distritos: <b>{1874 if usar_0717 else 1892:,}</b> &nbsp;·&nbsp;
      SSIAT / SDOT-PCM · 2026</p>
 </div>
 """, unsafe_allow_html=True)
@@ -124,22 +100,25 @@ st.markdown(f"""
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 1 — KPIs
 # ══════════════════════════════════════════════════════════════════════════════
-# En 2007-2017 la base censal es 1874; en 2017-2025 es 1892. Para el cálculo de porcentajes, usamos 1847 y 1892 respectivamente 
 total     = len(dff)
 total_kpi = 1874 if usar_0717 else 1892
 n_crec    = int((dff[col_tcm] > 0).sum())
 n_decrec  = int((dff[col_tcm] < 0).sum())
 n_doble   = int(((dff["TC_07_17"] < 0) & (dff["TC_17_25"] < 0)).sum())
 n_creac   = int(dff["ES_CREACION"].sum())
-pob_total = dff["POB2025" if not usar_0717 else "POB2017"].sum()
 
 k1, k2, k3, k4, k5 = st.columns(5)
 for col_st, cls, label, valor, sub, color in [
-    (k1, "blue",  "🗺️ Distritos",          f"{total_kpi:,}", "Base censo 2017" if usar_0717 else "Base censo 2025", "#1E40AF"),
-    (k2, "green", "📈 Con crecimiento",    f"{n_crec:,}",   f"{n_crec/total*100:.1f}% del total", "#166534"),
-    (k3, "red",   "📉 Con decrecimiento",  f"{n_decrec:,}", f"{n_decrec/total*100:.1f}% del total","#991B1B"),
-    (k4, "red",   "⚠️ Doble decrec.",      f"{n_doble:,}",  "Negativa en ambos períodos intercensales",          "#991B1B"),
-    (k5, "amber", "🏗️ Creaciones",         f"{n_creac:,}",  "Post-2002",                           "#92400E"),
+    (k1, "blue",  "🗺️ Distritos",
+     f"{total_kpi:,}", "Base censo 2017" if usar_0717 else "Base censo 2025", "#1E40AF"),
+    (k2, "green", "📈 Con crecimiento",
+     f"{n_crec:,}", f"{n_crec/total*100:.1f}% del total", "#166534"),
+    (k3, "red",   "📉 Con decrecimiento",
+     f"{n_decrec:,}", f"{n_decrec/total*100:.1f}% del total", "#991B1B"),
+    (k4, "red",   "⚠️ Doble decrec.",
+     f"{n_doble:,}", "Negativa en ambos períodos intercensales", "#991B1B"),
+    (k5, "amber", "🏗️ Creaciones",
+     f"{n_creac:,}", "Post-2002", "#92400E"),
 ]:
     with col_st:
         st.markdown(f"""
@@ -153,63 +132,9 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FILA 2 — Región natural | Mapa | Alertas
+# FILA 2 — Mapa (izq ampliado) | Alertas (der compactas)
 # ══════════════════════════════════════════════════════════════════════════════
-col_izq, col_mapa, col_der = st.columns([1.1, 1.7, 1.1])
-
-COLOR_REG = {
-    "COSTA":      "#ECF007",
-    "SIERRA":     "#5E2417",
-    "SELVA ALTA": "#175E1A",
-    "SELVA BAJA": "#18C420",
-}
-
-# ── TCM por región natural ─────────────────────────────────────────────────
-with col_izq:
-    st.markdown('<div class="section-title">TCM por región natural</div>',
-                unsafe_allow_html=True)
-
-    reg = dff.groupby("REGION_NAT").agg(
-        n       = ("UBIGEO",  "count"),
-        pob     = ("POB2017", "sum"),
-        tcm_med = (col_tcm,   "mean"),
-        n_crec  = (col_tcm,   lambda x: (x > 0).sum()),
-    ).reset_index().sort_values("pob", ascending=False)
-
-    for _, r in reg.iterrows():
-        tc  = r["tcm_med"]
-        col = "#10B981" if tc > 0 else "#EF4444"
-        pct = r["n_crec"] / r["n"] * 100 if r["n"] > 0 else 0
-        st.markdown(f"""
-        <div style="background:#f8fafc;border-radius:8px;padding:.7rem .9rem;
-                    margin-bottom:.4rem;
-                    border-left:3px solid {COLOR_REG.get(r['REGION_NAT'], '#94a3b8')}">
-          <div style="font-weight:600;font-size:.82rem">{r['REGION_NAT']}</div>
-          <div style="display:flex;justify-content:space-between;margin-top:.2rem">
-            <span style="font-size:.76rem;color:#64748b">{int(r['n'])} distritos</span>
-            <span style="font-weight:700;font-size:.82rem;color:{col}">
-              {'▲' if tc > 0 else '▼'} {tc:.2f}%</span>
-          </div>
-          <div style="background:#e2e8f0;border-radius:99px;height:5px;margin-top:.3rem">
-            <div style="background:{col};width:{min(pct,100):.0f}%;
-                        height:5px;border-radius:99px"></div>
-          </div>
-          <div style="font-size:.7rem;color:#94a3b8;margin-top:.15rem">
-            {pct:.0f}% crecen</div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="section-title" style="margin-top:.7rem">'
-                '% Población nacional</div>', unsafe_allow_html=True)
-    fig_pie = px.pie(
-        reg, values="pob", names="REGION_NAT",
-        color="REGION_NAT", color_discrete_map=COLOR_REG, hole=0.45,
-    )
-    fig_pie.update_traces(textposition="outside", textinfo="percent+label",
-                          textfont_size=10)
-    fig_pie.update_layout(margin=dict(t=5,b=5,l=5,r=5), height=185,
-                          showlegend=False, paper_bgcolor="rgba(0,0,0,0)")
-    st.plotly_chart(fig_pie, use_container_width=True)
-
+col_mapa, col_der = st.columns([2, 1])
 
 # ── Mapa coroplético ────────────────────────────────────────────────────────
 with col_mapa:
@@ -226,47 +151,44 @@ with col_mapa:
         return "#7F1D1D"
 
     m = folium.Map(
-        location=[-9.5, -75.5], 
+        location=[-9.5, -75.5],
         zoom_start=5,
-        tiles=None,             # Sin tile por defecto - lo agregamos explícitamente abajo 
-        prefer_canvas=True,     # Canvas renderer: más rápido que SVG para muchos polígonos
+        tiles=None,
+        prefer_canvas=True,
     )
- 
-    # Tile OSM explícito — sin API key, siempre disponible, sobrescribe cualquier default
     folium.TileLayer(
         tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attr='&copy; <a href="https://www.openstreetmap.org/copyright">'
+             'OpenStreetMap</a> contributors',
         name="OpenStreetMap",
         max_zoom=19,
     ).add_to(m)
-    
-    # Pre-calcular colores fuera del GeoJson para evitar llamadas repetidas
+
     gdf_f = gdf_f.copy()
     gdf_f["_color"] = gdf_f[col_tcm].apply(color_tcm)
-    
-    col_pob_mapa = "POB2017" if usar_0717 else "POB2025"
+
+    col_pob_mapa   = "POB2017" if usar_0717 else "POB2025"
     label_pob_mapa = "Pob. 2017" if usar_0717 else "Pob. 2025"
 
     folium.GeoJson(
         gdf_f.__geo_interface__,
         style_function=lambda feat: {
-            "fillColor": feat["properties"].get("_color", "#CBD5E1"),
-            "color":      "#ffffff",
+            "fillColor":   feat["properties"].get("_color", "#CBD5E1"),
+            "color":       "#ffffff",
             "weight":      0.3,
             "fillOpacity": 0.75,
         },
-        
         tooltip=folium.GeoJsonTooltip(
-            fields    = ["NOMBDIST", "NOMBDEP", col_tcm,
-                         col_pob_mapa, "REGION_NAT", "TIPOLOGIA"],
-            aliases   = ["Distrito", "Departamento", f"TCM {periodo}",
-                         label_pob_mapa, "Región", "Tipología"],
-            localize  = True,
-            sticky    = False, # False es más liviano que sticky=True
+            fields   = ["NOMBDIST", "NOMBDEP", col_tcm,
+                        col_pob_mapa, "REGION_NAT", "TIPOLOGIA"],
+            aliases  = ["Distrito", "Departamento", f"TCM {periodo}",
+                        label_pob_mapa, "Región", "Tipología"],
+            localize = True,
+            sticky   = False,
         ),
-        smooth_factor=2.0, # Simplifica geometrías en el navegador, menos vértices renderizados
+        smooth_factor=2.0,
         name="Distritos",
-        embed=False        # No embede el GeoJSON en el HTML -> carga más rápido 
+        embed=False,
     ).add_to(m)
 
     legend = """
@@ -285,15 +207,13 @@ with col_mapa:
     </div>"""
     m.get_root().html.add_child(folium.Element(legend))
 
-    st_folium(m, width=None, height=430, returned_objects=[])
+    st_folium(m, width=None, height=480, returned_objects=[])
 
 
-# ── Alertas automáticas ─────────────────────────────────────────────────────
+# ── Alertas compactas ───────────────────────────────────────────────────────
 with col_der:
     st.markdown('<div class="section-title">🔔 Alertas</div>',
                 unsafe_allow_html=True)
-
-    crea_d = dff[dff["ES_CREACION"] & (dff[col_tcm] < 0)]
 
     for cls, ico, txt in [
         ("red",   "🚨",
@@ -303,8 +223,7 @@ with col_der:
          f"<b>{n_doble:,} distritos</b> con doble decrecimiento "
          f"en ambos períodos."),
         ("amber", "🏗️",
-         f"<b>{len(crea_d)} creaciones</b> post-2002 con TCM "
-         f"negativa en el período reciente."),
+         f"<b>{n_creac}</b> creaciones post-2002 en el territorio nacional."),
         ("blue",  "📊",
          f"Población total Censo 2025: "
          f"<b>{df['POB2025'].sum():,.0f} hab.</b>"),
@@ -317,59 +236,76 @@ with col_der:
             unsafe_allow_html=True,
         )
 
-    if len(crea_d) > 0:
-        st.markdown(
-            '<div class="section-title" style="margin-top:.7rem">'
-            'Creaciones con decrecimiento reciente</div>',
-            unsafe_allow_html=True,
-        )
-        st.dataframe(
-            crea_d[["NOMBDIST", "NOMBDEP", "ANIO", col_tcm]]
-            .rename(columns={col_tcm: "TCM (%)", "ANIO": "Año"})
-            .sort_values("TCM (%)"),
-            use_container_width=True, height=175, hide_index=True,
-        )
-
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FILA 3 — Ranking + evolución + comparativa
+# FILA 3 — Ranking crecimiento + Evolución + Comparativa
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
 col_rank, col_evol = st.columns([1.5, 1])
 
 with col_rank:
-    st.markdown('<div class="section-title">'
-                'Top departamentos · % distritos con decrecimiento</div>',
-                unsafe_allow_html=True)
+    # Dos tabs: decrecimiento y crecimiento
+    tab_decrec, tab_crec = st.tabs([
+        "Top departamentos · % con decrecimiento",
+        "Top departamentos · % con crecimiento",
+    ])
 
     dep = dff.groupby("NOMBDEP").agg(
         total  = ("UBIGEO", "count"),
         decrec = (col_tcm,  lambda x: (x < 0).sum()),
+        crec   = (col_tcm,  lambda x: (x > 0).sum()),
     ).reset_index()
-    dep["pct"] = dep["decrec"] / dep["total"] * 100
-    dep = dep.sort_values("decrec", ascending=False).head(12)
-    ref = (dff[col_tcm] < 0).sum() / total * 100
+    dep["pct_decrec"] = dep["decrec"] / dep["total"] * 100
+    dep["pct_crec"]   = dep["crec"]   / dep["total"] * 100
 
-    fig_r = go.Figure(go.Bar(
-        y=dep["NOMBDEP"], x=dep["pct"], orientation="h",
-        marker_color="#EF4444",
-        text=dep["pct"].apply(lambda v: f"{v:.0f}%"),
-        textposition="outside", textfont_size=10,
-    ))
-    fig_r.add_vline(
-        x=ref, line_dash="dot", line_color="#64748b", line_width=1.5,
-        annotation_text=f"Ref. nacional {ref:.0f}%",
-        annotation_position="top right", annotation_font_size=10,
-    )
-    fig_r.update_layout(
-        height=375, margin=dict(t=10,b=10,l=130,r=60),
-        xaxis=dict(title="% con decrecimiento", range=[0,105],
-                   gridcolor="#f1f5f9"),
-        yaxis=dict(autorange="reversed", tickfont_size=11),
-        plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
-        showlegend=False,
-    )
-    st.plotly_chart(fig_r, use_container_width=True)
+    ref_decrec = (dff[col_tcm] < 0).sum() / total * 100
+    ref_crec   = (dff[col_tcm] > 0).sum() / total * 100
+
+    with tab_decrec:
+        top_d = dep.sort_values("decrec", ascending=False).head(12)
+        fig_d = go.Figure(go.Bar(
+            y=top_d["NOMBDEP"], x=top_d["pct_decrec"], orientation="h",
+            marker_color="#EF4444",
+            text=top_d["pct_decrec"].apply(lambda v: f"{v:.0f}%"),
+            textposition="outside", textfont_size=10,
+        ))
+        fig_d.add_vline(
+            x=ref_decrec, line_dash="dot", line_color="#64748b", line_width=1.5,
+            annotation_text=f"Ref. nacional {ref_decrec:.0f}%",
+            annotation_position="top right", annotation_font_size=10,
+        )
+        fig_d.update_layout(
+            height=375, margin=dict(t=10, b=10, l=130, r=70),
+            xaxis=dict(title="% con decrecimiento", range=[0, 110],
+                       gridcolor="#f1f5f9"),
+            yaxis=dict(autorange="reversed", tickfont_size=11),
+            plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+        )
+        st.plotly_chart(fig_d, use_container_width=True)
+
+    with tab_crec:
+        top_c = dep.sort_values("crec", ascending=False).head(12)
+        fig_c2 = go.Figure(go.Bar(
+            y=top_c["NOMBDEP"], x=top_c["pct_crec"], orientation="h",
+            marker_color="#10B981",
+            text=top_c["pct_crec"].apply(lambda v: f"{v:.0f}%"),
+            textposition="outside", textfont_size=10,
+        ))
+        fig_c2.add_vline(
+            x=ref_crec, line_dash="dot", line_color="#64748b", line_width=1.5,
+            annotation_text=f"Ref. nacional {ref_crec:.0f}%",
+            annotation_position="top right", annotation_font_size=10,
+        )
+        fig_c2.update_layout(
+            height=375, margin=dict(t=10, b=10, l=130, r=70),
+            xaxis=dict(title="% con crecimiento", range=[0, 110],
+                       gridcolor="#f1f5f9"),
+            yaxis=dict(autorange="reversed", tickfont_size=11),
+            plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+        )
+        st.plotly_chart(fig_c2, use_container_width=True)
 
 with col_evol:
     st.markdown('<div class="section-title">'
@@ -388,17 +324,17 @@ with col_evol:
         text=evol["N"], textposition="top center", textfont_size=11,
     ))
     fig_e.update_layout(
-        height=175, margin=dict(t=10,b=20,l=10,r=10),
+        height=175, margin=dict(t=10, b=20, l=10, r=10),
         xaxis=dict(tickvals=evol["Año"].tolist(), tickfont_size=9,
                    gridcolor="#f1f5f9"),
-        yaxis=dict(range=[1820,1910], tickfont_size=9, gridcolor="#f1f5f9"),
+        yaxis=dict(range=[1820, 1910], tickfont_size=9, gridcolor="#f1f5f9"),
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
     )
     st.plotly_chart(fig_e, use_container_width=True)
 
     st.markdown('<div class="section-title" style="margin-top:.4rem">'
-                'Comparativa intercensal 07-17 vs 17-25 · % con decrecimiento</div>',
+                'Comparativa 07-17 vs 17-25 · % con decrecimiento</div>',
                 unsafe_allow_html=True)
 
     comp = dff.groupby("REGION_NAT").agg(
@@ -420,8 +356,8 @@ with col_evol:
         textposition="outside", textfont_size=9,
     ))
     fig_c.update_layout(
-        barmode="group", height=175, margin=dict(t=10,b=10,l=10,r=10),
-        yaxis=dict(range=[0,110], tickfont_size=9, gridcolor="#f1f5f9"),
+        barmode="group", height=175, margin=dict(t=10, b=10, l=10, r=10),
+        yaxis=dict(range=[0, 110], tickfont_size=9, gridcolor="#f1f5f9"),
         xaxis_tickfont_size=9,
         legend=dict(orientation="h", y=1.2, x=0, font_size=9),
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
@@ -443,42 +379,73 @@ cols_t = [c for c in [
 ] if c in dff.columns]
 
 tabla = dff[cols_t].rename(columns={
-    "NOMBDEP":    "Departamento",
-    "NOMBPROV":   "Provincia",
-    "NOMBDIST":   "Distrito",
-    "REGION_NAT": "Región",
-    "TIPOLOGIA":  "Tipología",
-    "TC_07_17":   "TCM 07-17 (%)",
-    "TC_17_25":   "TCM 17-25 (%)",
+    "NOMBDEP":      "Departamento",
+    "NOMBPROV":     "Provincia",
+    "NOMBDIST":     "Distrito",
+    "REGION_NAT":   "Región",
+    "TIPOLOGIA":    "Tipología",
+    "TC_07_17":     "TCM 07-17 (%)",
+    "TC_17_25":     "TCM 17-25 (%)",
     "DOBLE_DECREC": "Doble decrec.",
     "ES_CREACION":  "Creación",
     "ANIO":         "Año crea.",
 })
 
-busqueda = st.text_input("🔍 Buscar por nombre de distrito o ubigeo", "")
-if busqueda:
-    mask = (
-        tabla["Distrito"].str.contains(busqueda.upper(), na=False) |
-        tabla["UBIGEO"].astype(str).str.contains(busqueda, na=False)
-    )
-    tabla = tabla[mask]
+# Tres buscadores separados: departamento, provincia, distrito
+c_dep, c_prov, c_dist = st.columns(3)
+with c_dep:
+    b_dep = st.text_input("🔍 Departamento", "",
+                          placeholder="Ej: LIMA",
+                          label_visibility="collapsed")
+with c_prov:
+    b_prov = st.text_input("🔍 Provincia", "",
+                           placeholder="Ej: HUARAZ",
+                           label_visibility="collapsed")
+with c_dist:
+    b_dist = st.text_input("🔍 Distrito o ubigeo", "",
+                           placeholder="Ej: CANGALLO o 050204",
+                           label_visibility="collapsed")
+
+if b_dep:
+    tabla = tabla[tabla["Departamento"].str.contains(b_dep.upper(), na=False)]
+if b_prov:
+    tabla = tabla[tabla["Provincia"].str.contains(b_prov.upper(), na=False)]
+if b_dist:
+    tabla = tabla[
+        tabla["Distrito"].str.contains(b_dist.upper(), na=False) |
+        tabla["UBIGEO"].astype(str).str.contains(b_dist, na=False)
+    ]
+
+tabla_sorted = tabla.sort_values("TCM 07-17 (%)")
 
 st.dataframe(
-    tabla.sort_values("TCM 07-17 (%)"),
-    use_container_width=True, height=275, hide_index=True,
+    tabla_sorted,
+    use_container_width=True, height=280, hide_index=True,
 )
 
-csv = tabla.to_csv(index=False, encoding="utf-8-sig")
-st.download_button(
-    label="⬇️ Descargar tabla (CSV)",
-    data=csv,
-    file_name=f"crecimiento_{periodo.replace(' ','').replace('–','_')}.csv",
-    mime="text/csv",
-)
+# Descarga en CSV y Excel
+col_dl1, col_dl2 = st.columns([1, 1])
+with col_dl1:
+    csv = tabla_sorted.to_csv(index=False, encoding="utf-8-sig")
+    st.download_button(
+        label="⬇️ Descargar CSV",
+        data=csv,
+        file_name=f"crecimiento_{periodo.replace(' ','').replace('–','_')}.csv",
+        mime="text/csv",
+    )
+with col_dl2:
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        tabla_sorted.to_excel(writer, index=False, sheet_name="Crecimiento")
+    st.download_button(
+        label="⬇️ Descargar Excel (.xlsx)",
+        data=buffer.getvalue(),
+        file_name=f"crecimiento_{periodo.replace(' ','').replace('–','_')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 st.markdown("---")
 st.caption(
     "Fuentes: INEI Censos Nacionales 2007, 2017 y 2025 · "
-    "Proyecciones Poblacionales 2025 · "
     "Elaborado por SSIAT · SDOT-PCM · 2026"
 )

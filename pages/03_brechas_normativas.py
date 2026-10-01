@@ -208,7 +208,7 @@ st.markdown(f"""
 # FILA 1 — KPIs
 # ══════════════════════════════════════════════════════════════════════════════
 total    = len(df)
-total_kpi    = 1874 if usar_0717 else 1892
+total_kpi    = 1892 if usar_2025 else 1874
 n_cumple = int(df[col_cumple].sum())
 n_nc     = total - n_cumple
 n_crit   = int((df[col_cat] == "Menos de 500 hab.").sum())
@@ -221,7 +221,7 @@ signo         = "+" if diff_cumple >= 0 else ""
 k1, k2, k3, k4 = st.columns(4)
 for col_st, cls, label, valor, sub, color in [
     (k1, "blue",  "🗺️ Total distritos",
-     f"{total_kpi:,}", "Base INEI 2017" if usar_0717 else "Base INEI 2025",  "#1E40AF"),
+     f"{total_kpi:,}", "Base INEI 2025" if usar_2025 else "Base INEI 2017",  "#1E40AF"),
     (k2, "green", f"✅ Cumplen ≥ 4,800 hab.",
      f"{n_cumple:,}",
      f"{n_cumple/total*100:.1f}% · {signo}{diff_cumple} vs. {anno_otro}",

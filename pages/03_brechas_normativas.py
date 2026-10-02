@@ -167,8 +167,8 @@ df, gdf_m = preparar_datos()
 with st.sidebar:
     st.markdown("## ⚖️ Filtro")
     anno = st.radio(
-        "Período de análisis",
-        ["2017", "2025"],
+        "Año censal",
+        ["2017 — Censo INEI", "2025 — Censo INEI"],
         index=1,
     )
     usar_2025  = anno == "2025 — Censo INEI"
@@ -185,9 +185,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("""
     **Marco normativo**
-    - Ley N.° 27795, Ley de Demarcación y Organización Territorial
-    - D.S. N° 134-2025-PCM, que aprueba el TUO del Reglamento de la Ley N.° 27795, 
-    aprobado por D.S. N° 191-2020-PCM
+    - Ley N.° 27795
+    - TUO DS 134-2025-PCM
+    - Tabla N°1 (DS 191-2020-PCM)
+    - Tabla N°2 (RVM 005-2019-PCM)
     """)
     st.caption("Umbral mínimo absoluto: **4,800 hab.** (tipologías B1/B2/B3 · Tabla N°1)")
 
@@ -208,7 +209,6 @@ st.markdown(f"""
 # FILA 1 — KPIs
 # ══════════════════════════════════════════════════════════════════════════════
 total    = len(df)
-total_kpi    = 1892 if usar_2025 else 1874
 n_cumple = int(df[col_cumple].sum())
 n_nc     = total - n_cumple
 n_crit   = int((df[col_cat] == "Menos de 500 hab.").sum())
@@ -221,7 +221,7 @@ signo         = "+" if diff_cumple >= 0 else ""
 k1, k2, k3, k4 = st.columns(4)
 for col_st, cls, label, valor, sub, color in [
     (k1, "blue",  "🗺️ Total distritos",
-     f"{total_kpi:,}", "Base INEI 2025" if usar_2025 else "Base INEI 2017",  "#1E40AF"),
+     f"{total:,}", f"Censo {anno_label} · Base INEI",  "#1E40AF"),
     (k2, "green", f"✅ Cumplen ≥ 4,800 hab.",
      f"{n_cumple:,}",
      f"{n_cumple/total*100:.1f}% · {signo}{diff_cumple} vs. {anno_otro}",
@@ -520,7 +520,7 @@ tabla = df[cols_tabla].rename(columns={
 col_f1, col_f2 = st.columns([2, 1])
 with col_f1:
     busqueda = st.text_input(
-        "", placeholder="🔍 Buscar por ubigeo, nombre de distrito o departamento",
+        "Buscar", placeholder="🔍 Buscar por ubigeo, nombre de distrito o departamento",
         label_visibility="collapsed",
     )
 with col_f2:

@@ -77,7 +77,7 @@ with st.sidebar:
     usar_0717     = periodo == "2007 – 2017"
     col_tcm       = "TC_07_17" if usar_0717 else "TC_17_25"
     st.markdown("---")
-    st.caption("Fuentes: INEI 2007, 2017, 2025 · SSIAT 2026")
+    st.caption("Fuentes: INEI Censos 2007, 2017 y 2025 · SSIAT 2026")
 
 dff   = df.copy()
 gdf_f = gdf.copy()
@@ -109,7 +109,7 @@ tcm_nac = TCM_NAC_0717 if usar_0717 else TCM_NAC_1725
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown(f"""
 <div class="header-banner">
-  <h2>📊 Resumen Ejecutivo — Crecimiento Poblacional en el Perú</h2>
+  <h2>📊 Resumen Ejecutivo — Análisis Espacial delCrecimiento Poblacional en el Perú</h2>
   <p>Período: <b>{periodo}</b> &nbsp;·&nbsp;
      TCM promedio anual: <b>{tcm_nac:.2f}%</b> &nbsp;·&nbsp;
      SSIAT / SDOT-PCM · 2026</p>
@@ -128,8 +128,8 @@ n_bajo   = int((dff[col_tcm] < tcm_ref).sum())
 
 k1, k2, k3, k4, k5 = st.columns(5)
 for col_st, cls, label, valor, sub, color in [
-    (k1, "blue",   "🗺️ Total distritos",
-     "1,892", "A la fecha · base INEI 2025", "#1E40AF"),
+    (k1, "blue",   "🗺️ Total distritos creados",
+     "1,892", "A la fecha (2025)", "#1E40AF"),
     (k2, "green",  "📈 TCM promedio anual",
      f"{tcm_nac:.2f}%",
      f"Censo {'2017' if usar_0717 else '2025'} · nivel nacional",
@@ -166,11 +166,13 @@ with col_mapa:
 
     def color_tcm(v):
         if pd.isna(v): return "#CBD5E1"
-        if v >= 1.5:   return "#1D4ED8"
-        if v >= 0.5:   return "#60A5FA"
-        if v >= 0:     return "#BAE6FD"
-        if v >= -2.5:  return "#FCA5A5"
-        if v >= -5.0:  return "#EF4444"
+        if v > 3.0:    return "#034E7B"
+        if v >= 1.5:   return "#0570B0"
+        if v >= 0.5:   return "#74A9CF"
+        if v >= 0:     return "#D0D1E6"
+        if v >= -0.1:  return "#F4BDBD"
+        if v >= -2.5:  return "#F68484"
+        if v >= -5.0:  return "#E31A1C"
         return "#7F1D1D"
 
     m = folium.Map(
@@ -217,11 +219,13 @@ with col_mapa:
                 border:1px solid #e2e8f0;font-size:11px;
                 box-shadow:0 2px 6px rgba(0,0,0,.15)">
       <b>TCM anual (%)</b><br>
-      <span style="color:#1D4ED8">■</span> ≥ 1.5 &nbsp;
-      <span style="color:#60A5FA">■</span> 0.5–1.5 &nbsp;
-      <span style="color:#BAE6FD">■</span> 0–0.5<br>
-      <span style="color:#FCA5A5">■</span> −2.5–0 &nbsp;
-      <span style="color:#EF4444">■</span> −5–−2.5 &nbsp;
+      <span style="color:#034E7B">■</span> ≥ 3.0 &nbsp;
+      <span style="color:#0570B0">■</span> 1.5–3.0 &nbsp;
+      <span style="color:#74A9CF">■</span> 0.5–1.5<br>
+      <span style="color:#D0D1E6">■</span> 0–0.5 &nbsp;
+      <span style="color:#F4BDBD">■</span> −0.1–0 &nbsp;
+      <span style="color:#F68484">■</span> −2.5–−0.1 &nbsp;
+      <span style="color:#E31A1C">■</span> −5–−2.5 &nbsp;
       <span style="color:#7F1D1D">■</span> &lt;−5<br>
       <span style="color:#CBD5E1">■</span> Sin datos
     </div>"""

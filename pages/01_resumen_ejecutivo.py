@@ -124,6 +124,8 @@ total    = len(dff)
 n_crec   = int((dff[col_tcm] > 0).sum())
 n_decrec = int((dff[col_tcm] < 0).sum())
 n_doble  = int(((dff["TC_07_17"] < 0) & (dff["TC_17_25"] < 0)).sum())
+n_bajo   = int((dff[col_tcm] < tcm_ref).sum())   # Usado en alertas
+
 k1, k2, k3, k4 = st.columns(4)
 for col_st, cls, label, valor, sub, color in [
     (k1, "blue",   "🗺️ Total distritos",

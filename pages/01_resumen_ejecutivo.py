@@ -47,8 +47,8 @@ st.markdown("""
 .kpi-label { font-size:.78rem; color:#64748b; margin-bottom:.15rem; }
 .kpi-value { font-size:1.7rem; font-weight:700; line-height:1.1; }
 .kpi-sub   { font-size:.76rem; color:#94a3b8; margin-top:.2rem; }
-.alert-box { padding:.55rem .9rem; border-radius:7px; margin-bottom:.4rem;
-             font-size:.82rem; display:flex; align-items:flex-start; gap:.5rem; }
+.alert-box { padding:.8rem 1.1rem; border-radius:8px; margin-bottom:.55rem;
+             font-size:.88rem; display:flex; align-items:flex-start; gap:.6rem; line-height:1.45; }
 .alert-red   { background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; }
 .alert-amber { background:#FFFBEB; border:1px solid #FDE68A; color:#92400E; }
 .alert-green { background:#F0FDF4; border:1px solid #BBF7D0; color:#166534; }
@@ -124,24 +124,18 @@ total    = len(dff)
 n_crec   = int((dff[col_tcm] > 0).sum())
 n_decrec = int((dff[col_tcm] < 0).sum())
 n_doble  = int(((dff["TC_07_17"] < 0) & (dff["TC_17_25"] < 0)).sum())
-n_bajo   = int((dff[col_tcm] < tcm_ref).sum())
-
-k1, k2, k3, k4, k5 = st.columns(5)
+k1, k2, k3, k4 = st.columns(4)
 for col_st, cls, label, valor, sub, color in [
-    (k1, "blue",   "🗺️ Total distritos creados",
-     "1,892", "A la fecha (2025)", "#1E40AF"),
+    (k1, "blue",   "🗺️ Total distritos",
+     "1,892", "A la fecha · base INEI 2025", "#1E40AF"),
     (k2, "green",  "📈 TCM promedio anual",
      f"{tcm_nac:.2f}%",
      f"Censo {'2017' if usar_0717 else '2025'} · nivel nacional",
      "#166534"),
-    (k3, "red",    "📉 Con decrecimiento",
-     f"{n_decrec:,}", f"{n_decrec/total*100:.1f}% del total", "#991B1B"),
-    (k4, "red",    "⚠️ Doble decrec.",
+    (k3, "red",    "⚠️ Doble decrec.",
      f"{n_doble:,}", "Negativa en ambos períodos", "#991B1B"),
-    (k5, "purple", "📉 Bajo TCM promedio",
-     f"{n_bajo:,}",
-     f"{n_bajo/total*100:.1f}% · ref. {tcm_ref:.2f}%",
-     "#5B21B6"),
+    (k4, "amber",  "🏗️ Creaciones distritales",
+     "64", "Post-2002 · a la fecha", "#92400E"),
 ]:
     with col_st:
         st.markdown(f"""
@@ -157,7 +151,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 2 — Mapa | Alertas
 # ══════════════════════════════════════════════════════════════════════════════
-col_mapa, col_der = st.columns([2, 1])
+col_mapa, col_der = st.columns([1.7, 1])
 
 # ── Mapa coroplético ────────────────────────────────────────────────────────
 with col_mapa:
@@ -242,10 +236,10 @@ with col_der:
         ("red",    "🚨",
          f"<b>{n_decrec:,} distritos</b> con decrecimiento "
          f"({n_decrec/total*100:.1f}%) — principalmente Sierra."),
-        ("purple", "📉",
+        ("amber", "📉",
          f"<b>{n_bajo:,} distritos</b> ({n_bajo/total*100:.1f}%) "
-         f"están por debajo de la TCM promedio "
-         f"({tcm_ref:.2f}%) en el período {periodo}."),
+         f"por debajo de la TCM promedio ({tcm_ref:.2f}%) "
+         f"en el período {periodo}."),
         ("amber",  "🏗️",
          f"<b>{n_creac_periodo} distritos</b> creados en el "
          f"período {label_creac}."),
@@ -356,11 +350,19 @@ with col_rank:
         fig_t3.update_layout(
             barmode="stack",
             height=550,
-            margin=dict(t=10, b=10, l=130, r=20),
+            margin=dict(t=10, b=10, l=130, r=160),
             xaxis=dict(title="N.° de distritos", gridcolor="#f1f5f9",
                        tickfont_size=9),
             yaxis=dict(tickfont_size=10),
-            legend=dict(orientation="h", y=1.03, x=0, font_size=10),
+            legend=dict(
+                orientation="v",
+                x=1.02, y=0.5,
+                xanchor="left", yanchor="middle",
+                font_size=10,
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="#e2e8f0",
+                borderwidth=1,
+            ),
             plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         )
         st.caption(

@@ -49,8 +49,8 @@ st.markdown("""
 .kpi-sub   { font-size:.76rem; color:#94a3b8; margin-top:.2rem; }
 .sem-row {
     display:flex; align-items:flex-start; gap:8px;
-    padding:7px 9px; border-radius:7px; margin-bottom:5px;
-    font-size:.82rem; background:#f8fafc;
+    padding:10px 13px; border-radius:8px; margin-bottom:7px;
+    font-size:.88rem; background:#f8fafc; line-height:1.45;
 }
 .section-title {
     font-size:.72rem; font-weight:600; letter-spacing:.06em;
@@ -117,7 +117,8 @@ n_suburban   = int((dff[col_dinamica] == "Capital crece / Distrito decrece").sum
 k1, k2, k3, k4, k5 = st.columns(5)
 for col_st, cls, label, valor, sub, color in [
     (k1, "blue",   "🗺️ Distritos / capitales",
-     f"{total:,}", "Base INEI 2025", "#1E40AF"),
+     f"{1874 if usar_0717 else 1892:,}",
+     "Base censo 2017" if usar_0717 else "Base censo 2025", "#1E40AF"),
     (k2, "green",  "📈 Capitales que crecen",
      f"{n_cap_crec:,}",
      f"{n_cap_crec/total*100:.1f}% del total", "#166534"),
@@ -245,13 +246,15 @@ with col_mapa:
             else:
                 din   = row.get(col_dinamica, "Sin datos")
                 color = COLOR_DIN_MAP.get(din, "#CBD5E1")
+                _val_din = row.get(col_pob_cap)
+                pob_din  = pob if (_val_din is None or pd.isna(_val_din)) else _val_din
                 tooltip_txt = (
                     f"<b>{row['NOMBCCPP']}</b><br>"
                     f"{row['NOMBDIST']} — {row['NOMBDEP']}<br>"
                     f"Dinámica: <b>{din}</b><br>"
                     f"TCM capital: {row[col_tcm_cap]:.2f}% &nbsp;|&nbsp; "
                     f"TCM distrito: {row[col_tcm_dist]:.2f}%<br>"
-                    f"Pob. 2017: {int(pob):,}"
+                    f"{label_pob_cap}: {int(pob_din):,}"
                 )
 
             folium.CircleMarker(
@@ -408,11 +411,19 @@ with col_graf1:
         fig_dep.update_layout(
             barmode="stack",
             height=520,
-            margin=dict(t=10, b=10, l=130, r=20),
+            margin=dict(t=10, b=10, l=130, r=130),
             xaxis=dict(title="N.° de capitales", gridcolor="#f1f5f9",
                        tickfont_size=9),
             yaxis=dict(tickfont_size=10),
-            legend=dict(orientation="h", y=1.03, x=0, font_size=10),
+            legend=dict(
+                orientation="v",
+                x=1.02, y=0.5,
+                xanchor="left", yanchor="middle",
+                font_size=10,
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="#e2e8f0",
+                borderwidth=1,
+            ),
             plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         )
         st.plotly_chart(fig_dep, use_container_width=True)

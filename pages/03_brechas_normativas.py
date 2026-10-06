@@ -15,6 +15,7 @@ Marco normativo:
 
 import warnings
 warnings.filterwarnings("ignore")
+import io
 
 import pandas as pd
 import numpy as np
@@ -376,36 +377,72 @@ with col_mapa:
 
 
 with col_ref:
-    # Tabla de umbrales
-    st.markdown('<div class="section-title">Umbrales Tabla N°1 y N°2</div>',
+    # Tablas de umbrales separadas en pestañas
+    st.markdown('<div class="section-title">Umbrales normativos</div>',
                 unsafe_allow_html=True)
 
-    tbl_data = {
-        "Tipología":    ["A0", "A1", "A2 cercado", "A2 no cerc.",
-                         "A3.1", "A3.2 / AB", "B1/B2/B3"],
-        "T1 · dist.":   ["100,000", "50,000", "20,000", "20,000",
-                         "10,000", "5,000", "4,800"],
-        "T1 · cap.":    ["—", "—", "—", "7,000",
-                         "3,500", "1,800", "1,500"],
-        "T2 · dist.":   ["80,000", "40,000", "16,000", "16,000",
-                         "8,000", "4,000", "3,800"],
-        "T2 · cap.":    ["—", "—", "—", "5,600",
-                         "2,800", "1,400", "1,200"],
-    }
-    st.dataframe(
-        pd.DataFrame(tbl_data),
-        use_container_width=True,
-        hide_index=True,
-        height=245,
-    )
+    tab_t1, tab_t2 = st.tabs([
+        "Tabla N°1 — Creación distrital",
+        "Tabla N°2 — Fusión / reorganización",
+    ])
 
-    st.markdown("""
-    <div class="norma-note">
-      Los umbrales de <b>4,800 hab.</b> y <b>1,500 hab.</b> son los mínimos
-      poblacionales (Tabla N° 1) para la creación distrital y la propuesta de capital respectivamente, y se usan como referencias
-      universales en el mapa y los gráficos.
-    </div>
-    """, unsafe_allow_html=True)
+    with tab_t1:
+        st.caption("DS 191-2020-PCM · Requisitos mínimos para creación de distritos")
+        tbl1 = {
+            "Tipología": ["A0", "A1", "A2 (cercado)", "A2 (no cercado)",
+                          "A3.1", "A3.2 y AB", "B1, B2, B3"],
+            "Área geográfica":
+                ["Área Metropolitana Lima-Callao",
+                 "Ciudad Capital de Región o Ciudad Mayor Principal",
+                 "Ciudad Mayor (cercado de prov.)",
+                 "Ciudad Mayor (no cercado de prov.)",
+                 "Ciudad Intermedia Principal",
+                 "Ciudad Intermedia / Villa",
+                 "Pueblo / Caserío / Centro Poblado Rural"],
+            "Pob. mín. distrito":
+                ["100,000", "50,000", "20,000", "20,000",
+                 "10,000", "5,000", "4,800"],
+            "Pob. mín. capital":
+                ["No aplica", "No aplica", "No aplica", "7,000",
+                 "3,500", "1,800", "1,500"],
+        }
+        st.dataframe(pd.DataFrame(tbl1),
+                     use_container_width=True, hide_index=True, height=262)
+        st.markdown("""
+        <div class="norma-note">
+          El umbral de <b>4,800 hab.</b> (dist.) y <b>1,500 hab.</b> (capital)
+          para tipologías B1/B2/B3 es el mínimo absoluto y se usa como
+          referencia universal en el mapa y los gráficos.
+        </div>""", unsafe_allow_html=True)
+
+    with tab_t2:
+        st.caption("RVM 005-2019-PCM · Requisitos mínimos para fusión y reorganización territorial")
+        tbl2 = {
+            "Tipología": ["A0", "A1", "A2 (cercado)", "A2 (no cercado)",
+                          "A3.1", "A3.2 y AB", "B1, B2, B3"],
+            "Área geográfica":
+                ["Área Metropolitana Lima-Callao",
+                 "Ciudad Capital de Región o Ciudad Mayor Principal",
+                 "Ciudad Mayor (cercado de prov.)",
+                 "Ciudad Mayor (no cercado de prov.)",
+                 "Ciudad Intermedia Principal",
+                 "Ciudad Intermedia / Villa",
+                 "Pueblo / Caserío / Centro Poblado Rural"],
+            "Pob. mín. distrito":
+                ["80,000", "40,000", "16,000", "16,000",
+                 "8,000", "4,000", "3,800"],
+            "Pob. mín. capital":
+                ["No aplica", "No aplica", "No aplica", "5,600",
+                 "2,800", "1,400", "1,200"],
+        }
+        st.dataframe(pd.DataFrame(tbl2),
+                     use_container_width=True, hide_index=True, height=262)
+        st.markdown("""
+        <div class="norma-note">
+          Los umbrales de la Tabla N°2 son el 80% de los de la Tabla N°1
+          y aplican para procedimientos de fusión o reorganización
+          de circunscripciones existentes.
+        </div>""", unsafe_allow_html=True)
 
 
 
@@ -577,10 +614,14 @@ tabla = df[cols_tabla].rename(columns={
 cc1, cc2, cc3, cc4 = st.columns([1, 1, 1, 1])
 
 with cc1:
+    st.markdown('<div class="section-title">Departamento</div>',
+                unsafe_allow_html=True)
     lista_dep = ["Todos"] + sorted(tabla["Departamento"].dropna().unique().tolist())
     dep_sel = st.selectbox("Departamento", lista_dep, index=0,
                            key="dep_sel_p3", label_visibility="collapsed")
 with cc2:
+    st.markdown('<div class="section-title">Provincia</div>',
+                unsafe_allow_html=True)
     if dep_sel != "Todos":
         provs = sorted(tabla[tabla["Departamento"] == dep_sel]["Provincia"]
                        .dropna().unique().tolist())
@@ -590,6 +631,8 @@ with cc2:
     prov_sel = st.selectbox("Provincia", lista_prov, index=0,
                             key="prov_sel_p3", label_visibility="collapsed")
 with cc3:
+    st.markdown('<div class="section-title">Distrito</div>',
+                unsafe_allow_html=True)
     mask_d = pd.Series([True] * len(tabla), index=tabla.index)
     if dep_sel  != "Todos":  mask_d &= tabla["Departamento"] == dep_sel
     if prov_sel != "Todas":  mask_d &= tabla["Provincia"]    == prov_sel
@@ -598,6 +641,8 @@ with cc3:
     dist_sel = st.selectbox("Distrito", lista_dist, index=0,
                             key="dist_sel_p3", label_visibility="collapsed")
 with cc4:
+    st.markdown('<div class="section-title">Categoría poblacional</div>',
+                unsafe_allow_html=True)
     cat_sel = st.selectbox(
         "Categoría", ["Todas"] + CATEGORIAS, index=0,
         key="cat_sel_p3", label_visibility="collapsed",
@@ -623,13 +668,26 @@ st.dataframe(
     hide_index=True,
 )
 
-csv = tabla_sorted.to_csv(index=False, encoding="utf-8-sig")
-st.download_button(
-    label=f"⬇️ Descargar tabla — Censo {anno_label} (CSV)",
-    data=csv,
-    file_name=f"brechas_normativas_censo{anno_label}.csv",
-    mime="text/csv",
-)
+dl1, dl2 = st.columns(2)
+with dl1:
+    csv = tabla_sorted.to_csv(index=False, encoding="utf-8-sig")
+    st.download_button(
+        label=f"⬇️ Descargar CSV — Censo {anno_label}",
+        data=csv,
+        file_name=f"brechas_normativas_censo{anno_label}.csv",
+        mime="text/csv",
+    )
+with dl2:
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        tabla_sorted.to_excel(writer, index=False,
+                              sheet_name=f"Brechas_{anno_label}")
+    st.download_button(
+        label=f"⬇️ Descargar Excel — Censo {anno_label}",
+        data=buffer.getvalue(),
+        file_name=f"brechas_normativas_censo{anno_label}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 # ── Footer ──────────────────────────────────────────────────────────────────
 st.markdown("---")

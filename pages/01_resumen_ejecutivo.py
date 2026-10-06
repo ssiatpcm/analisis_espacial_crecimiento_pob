@@ -240,7 +240,7 @@ with col_der:
          f"({n_decrec/total*100:.1f}%) — principalmente Sierra."),
         ("amber", "📉",
          f"<b>{n_bajo:,} distritos</b> ({n_bajo/total*100:.1f}%) "
-         f"por debajo de la TCM promedio ({tcm_ref:.2f}%) "
+         f"por debajo de la TCM anual ({tcm_ref:.2f}%) "
          f"en el período {periodo}."),
         ("amber",  "🏗️",
          f"<b>{n_creac_periodo} distritos</b> creados en el "
@@ -528,6 +528,6 @@ with col_dl2:
 
 st.markdown("---")
 st.caption(
-    "Fuentes: INEI Censos Nacionales 2007, 2017 y 2025 · "
+    "Fuentes: INEI - Censos Nacionales 2007, 2017 y 2025. SDOT-PCM - Tipología de Distritos 2025 · "
     "Elaborado por SSIAT · SDOT-PCM · 2026"
 )

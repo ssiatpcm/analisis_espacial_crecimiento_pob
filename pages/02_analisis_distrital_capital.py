@@ -86,7 +86,7 @@ with st.sidebar:
     col_tcm_cap  = "TASA_0717"     if usar_0717 else "TASA_1725"
     col_dinamica = "DINAMICA_0717" if usar_0717 else "DINAMICA_1725"
     st.markdown("---")
-    st.caption("Fuentes: INEI 2007, 2017, 2025 · SSIAT 2026")
+    st.caption("Fuentes: INEI 2007, 2017 y 2025 · SSIAT 2026")
 
 # Sin filtros de región ni tipo — dataset completo
 dff = df_cap.copy()
@@ -97,7 +97,7 @@ dff = df_cap.copy()
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown(f"""
 <div class="header-banner">
-  <h2>📍 Análisis territorial — Distrito y Capital Distrital</h2>
+  <h2>📍 Análisis territorial — Distritos y Capitales </h2>
   <p>Período: <b>{periodo}</b> &nbsp;·&nbsp;
      Capitales analizadas: <b>{len(dff):,}</b> &nbsp;·&nbsp;
      SSIAT / SDOT-PCM · 2026</p>
@@ -127,7 +127,7 @@ for col_st, cls, label, valor, sub, color in [
      f"{n_cap_decrec/total*100:.1f}% del total", "#991B1B"),
     (k4, "amber",  "⚠️ Doble decrecimiento",
      f"{n_doble_cap:,}",
-     "Capital Y distrito decrecen", "#92400E"),
+     "Capital y distrito decrecen", "#92400E"),
     (k5, "purple", "🏘️ Suburbanización",
      f"{n_suburban:,}",
      "Capital crece / Distrito decrece", "#5B21B6"),
@@ -188,10 +188,10 @@ with col_izq:
 
 # ── Mapa de capitales ───────────────────────────────────────────────────────
 with col_mapa:
-    st.markdown('<div class="section-title">Mapa de capitales distritales</div>',
+    st.markdown('<div class="section-title">Mapa de capitales a nivel nacional</div>',
                 unsafe_allow_html=True)
 
-    tab_tcm, tab_din = st.tabs(["TCM de la capital", "Dinámica capital / distrito"])
+    tab_tcm, tab_din = st.tabs(["Tasa de Crecimiento Media (TCM) de la capital", "Dinámica capital / distrito"])
 
     def color_tcm_cap(v):
         if pd.isna(v): return "#CBD5E1"
@@ -461,8 +461,8 @@ with col_graf2:
 
     pct_peq = (dist_rango["< 500"] + dist_rango["500–2k"]) / total_rango * 100
     st.caption(
-        f"El **{pct_peq:.0f}%** de las capitales tiene menos de 2,000 hab. "
-        "— relevante para umbrales Art. 14 TUO DS 134-2025-PCM."
+        f"El **{pct_peq:.0f}%** de las capitales tiene menos de 2,000 hab., "
+        "dato relevante a considerar en las evaluaciones de las acciones de demarcación territorial."
     )
 
 

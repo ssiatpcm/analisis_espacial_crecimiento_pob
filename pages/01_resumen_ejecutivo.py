@@ -109,9 +109,9 @@ tcm_nac = TCM_NAC_0717 if usar_0717 else TCM_NAC_1725
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown(f"""
 <div class="header-banner">
-  <h2>📊 Resumen Ejecutivo — Análisis Espacial delCrecimiento Poblacional en el Perú</h2>
+  <h2>📊 Resumen Ejecutivo — Análisis Espacial del Crecimiento Poblacional en el Perú</h2>
   <p>Período: <b>{periodo}</b> &nbsp;·&nbsp;
-     TCM promedio anual: <b>{tcm_nac:.2f}%</b> &nbsp;·&nbsp;
+     Tasa de Crecimiento Media (TCM) anual: <b>{tcm_nac:.2f}%</b> &nbsp;·&nbsp;
      SSIAT / SDOT-PCM · 2026</p>
 </div>
 """, unsafe_allow_html=True)
@@ -129,13 +129,13 @@ n_bajo   = int((dff[col_tcm] < tcm_ref).sum())   # Usado en alertas
 k1, k2, k3, k4 = st.columns(4)
 for col_st, cls, label, valor, sub, color in [
     (k1, "blue",   "🗺️ Total distritos",
-     "1,892", "A la fecha · base INEI 2025", "#1E40AF"),
-    (k2, "green",  "📈 TCM promedio anual",
+     "1,892", "A la fecha · (2025)", "#1E40AF"),
+    (k2, "green",  "📈 TCM anual",
      f"{tcm_nac:.2f}%",
      f"Censo {'2017' if usar_0717 else '2025'} · nivel nacional",
      "#166534"),
-    (k3, "red",    "⚠️ Doble decrec.",
-     f"{n_doble:,}", "Negativa en ambos períodos", "#991B1B"),
+    (k3, "red",    "⚠️ Distritos con Doble decrecimiento",
+     f"{n_doble:,}", "Negativa en ambos períodos intercensales", "#991B1B"),
     (k4, "amber",  "🏗️ Creaciones distritales",
      "64", "Post-2002 · a la fecha", "#92400E"),
 ]:
@@ -157,7 +157,7 @@ col_mapa, col_der = st.columns([1.7, 1])
 
 # ── Mapa coroplético ────────────────────────────────────────────────────────
 with col_mapa:
-    st.markdown('<div class="section-title">Mapa TCM distrital</div>',
+    st.markdown('<div class="section-title">Mapa TCM a nivel distrital</div>',
                 unsafe_allow_html=True)
 
     def color_tcm(v):
@@ -280,9 +280,9 @@ with col_rank:
     ref_crec   = (dff[col_tcm] > 0).sum() / total * 100
 
     tab1, tab2, tab3 = st.tabs([
-        "% con decrecimiento",
-        "% con crecimiento",
-        "Bajo/sobre TCM promedio",
+        "Porcentaje de distritos con decrecimiento, por departamento",
+        "Porcentaje de distritos con crecimiento, por departamento",
+        "Distritos por debajo/sobre la TCM nacional",
     ])
 
     with tab1:
@@ -368,7 +368,7 @@ with col_rank:
             plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         )
         st.caption(
-            f"TCM promedio del período **{periodo}**: **{tcm_ref:.2f}%**. "
+            f"TCM nacional del período **{periodo}**: **{tcm_ref:.2f}%**. "
             "Distritos por debajo de este valor presentan un ritmo de "
             "crecimiento inferior al promedio nacional del período."
         )
@@ -376,7 +376,7 @@ with col_rank:
 
 with col_evol:
     st.markdown('<div class="section-title">'
-                'Evolución N.° de distritos (2007–2025)</div>',
+                'Evolución número de distritos (2007–2025)</div>',
                 unsafe_allow_html=True)
 
     evol = pd.DataFrame({
@@ -401,7 +401,7 @@ with col_evol:
     st.plotly_chart(fig_e, use_container_width=True)
 
     st.markdown('<div class="section-title" style="margin-top:.4rem">'
-                'Comparativa 07-17 vs 17-25 · % con decrecimiento</div>',
+                'Comparativa porcentaje de decrecimiento, por período intercensal </div>',
                 unsafe_allow_html=True)
 
     comp = dff.groupby("REGION_NAT").agg(

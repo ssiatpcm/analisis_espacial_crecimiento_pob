@@ -221,7 +221,8 @@ signo         = "+" if diff_cumple >= 0 else ""
 k1, k2, k3, k4 = st.columns(4)
 for col_st, cls, label, valor, sub, color in [
     (k1, "blue",  "🗺️ Total distritos",
-     f"{total:,}", f"Censo {anno_label} · Base INEI",  "#1E40AF"),
+     f"{1874 if not usar_2025 else 1892:,}",
+     "Base censo 2017" if not usar_2025 else "Base censo 2025", "#1E40AF"),
     (k2, "green", f"✅ Cumplen ≥ 4,800 hab.",
      f"{n_cumple:,}",
      f"{n_cumple/total*100:.1f}% · {signo}{diff_cumple} vs. {anno_otro}",
@@ -255,68 +256,125 @@ st.markdown('<div class="section-title">Distribución espacial — requisito pob
 col_mapa, col_ref = st.columns([1.4, 1])
 
 with col_mapa:
-    # Construir mapa Folium
-    m = folium.Map(
-        location=[-9.5, -75.5], zoom_start=5,
-        tiles=None, prefer_canvas=True,
-    )
-    folium.TileLayer(
-        tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attr='&copy; <a href="https://www.openstreetmap.org/copyright">'
-             'OpenStreetMap</a> contributors',
-        name="OpenStreetMap", max_zoom=19,
-    ).add_to(m)
-
-    # Pre-calcular color según año seleccionado
-    gdf_plot = gdf_m.copy()
-    gdf_plot["_color"] = gdf_plot[col_pob].apply(color_mapa)
-
-    folium.GeoJson(
-        gdf_plot.__geo_interface__,
-        style_function=lambda feat: {
-            "fillColor":   feat["properties"].get("_color", "#CBD5E1"),
-            "color":       "#ffffff",
-            "weight":      0.3,
-            "fillOpacity": 0.85,
-        },
-        tooltip=folium.GeoJsonTooltip(
-            fields   = ["NOMBDIST", "NOMBDEP", col_pob, col_cat,
-                        col_brecha, "TIPOLOGIA", "REGION_NAT"],
-            aliases  = ["Distrito", "Dpto.", f"Pob. {anno_label}",
-                        "Categoría", "Brecha vs. 4,800",
-                        "Tipología", "Región"],
-            localize = True,
-            sticky   = False,
-        ),
-        smooth_factor=2.0,
-        embed=False,
-    ).add_to(m)
-
-    # Leyenda igual al mapa de referencia SSIAT
-    leyenda_html = f"""
-    <div style="position:fixed;bottom:14px;left:14px;z-index:1000;
-                background:white;padding:10px 14px;border-radius:8px;
-                border:1px solid #e2e8f0;font-size:11px;
-                box-shadow:0 2px 5px rgba(0,0,0,.12);max-width:260px">
-      <b style="font-size:11px">Distritos que NO cumplen el<br>
-      requisito poblacional:</b><br>
-      <span style="color:#6B0000">■</span>
-        Distritos con menos de 500 hab.<br>
-      <span style="color:#C0392B">■</span>
-        Distritos entre 500 y 1,500 hab.<br>
-      <span style="color:#F1948A">■</span>
-        Distritos con más de 1,500 hab.<br>
-      <b style="font-size:11px">Distritos que SÍ cumplen:</b><br>
-      <span style="color:#2E75B6">■</span>
-        Distritos con más de 4,800 hab.<br>
-      <span style="color:#CBD5E1">■</span> Sin datos<br>
-      <span style="font-size:10px;color:#64748b">
-        Fuente: Censo {anno_label} · INEI</span>
-    </div>"""
-    m.get_root().html.add_child(folium.Element(leyenda_html))
-
     from streamlit_folium import st_folium
-    st_folium(m, width=None, height=440, returned_objects=[])
+
+    tab_dist, tab_cap = st.tabs([
+        "Distritos — umbral mínimo",
+        "Capitales — umbral mínimo",
+    ])
+
+    def base_map():
+        m = folium.Map(location=[-9.5, -75.5], zoom_start=5,
+                       tiles=None, prefer_canvas=True)
+        folium.TileLayer(
+            tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            name="OpenStreetMap", max_zoom=19,
+        ).add_to(m)
+        return m
+
+    # ── Tab 1: Mapa distritos (existente) ───────────────────────────────
+    with tab_dist:
+        m = base_map()
+        gdf_plot = gdf_m.copy()
+        gdf_plot["_color"] = gdf_plot[col_pob].apply(color_mapa)
+
+        folium.GeoJson(
+            gdf_plot.__geo_interface__,
+            style_function=lambda feat: {
+                "fillColor":   feat["properties"].get("_color", "#CBD5E1"),
+                "color":       "#ffffff",
+                "weight":      0.3,
+                "fillOpacity": 0.85,
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields   = ["NOMBDIST", "NOMBDEP", col_pob, col_cat,
+                            col_brecha, "TIPOLOGIA", "REGION_NAT"],
+                aliases  = ["Distrito", "Dpto.", f"Pob. {anno_label}",
+                            "Categoría", "Brecha vs. 4,800",
+                            "Tipología", "Región"],
+                localize = True, sticky = False,
+            ),
+            smooth_factor=2.0, embed=False,
+        ).add_to(m)
+
+        leyenda_dist = f"""
+        <div style="position:fixed;bottom:14px;left:14px;z-index:1000;
+                    background:white;padding:10px 14px;border-radius:8px;
+                    border:1px solid #e2e8f0;font-size:11px;
+                    box-shadow:0 2px 5px rgba(0,0,0,.12);max-width:260px">
+          <b>Distritos que NO cumplen:</b><br>
+          <span style="color:#6B0000">&#9632;</span> Menos de 500 hab.<br>
+          <span style="color:#C0392B">&#9632;</span> 500 a 1,500 hab.<br>
+          <span style="color:#F1948A">&#9632;</span> Más de 1,500 hab.<br>
+          <b>Distritos que SÍ cumplen:</b><br>
+          <span style="color:#2E75B6">&#9632;</span> Más de 4,800 hab.<br>
+          <span style="color:#CBD5E1">&#9632;</span> Sin datos<br>
+          <span style="font-size:10px;color:#64748b">Censo {anno_label} · INEI</span>
+        </div>"""
+        m.get_root().html.add_child(folium.Element(leyenda_dist))
+        st_folium(m, width=None, height=420, returned_objects=[])
+
+    # ── Tab 2: Mapa capitales — umbral mínimo 1,500 hab. ────────────────
+    with tab_cap:
+        from utils.carga_datos import cargar_capitales
+        df_cap_map = cargar_capitales()
+        col_pob_cap_map = "POB2025" if usar_2025 else "POB2017"
+
+        COLORES_CAP = {
+            "Menos de 250 hab.":  "#6B0000",
+            "250 a 750 hab.":     "#C0392B",
+            "750 a 1,500 hab.":   "#F1948A",
+            "Más de 1,500 hab.":  "#2E75B6",
+            "Sin datos":          "#CBD5E1",
+        }
+
+        def cat_cap(pob):
+            if pd.isna(pob):  return "Sin datos"
+            if pob < 250:     return "Menos de 250 hab."
+            if pob < 750:     return "250 a 750 hab."
+            if pob < 1500:    return "750 a 1,500 hab."
+            return "Más de 1,500 hab."
+
+        m2 = base_map()
+        pob_max_cap = df_cap_map[col_pob_cap_map].replace(0, np.nan).max()
+
+        for _, row in df_cap_map.iterrows():
+            pob_v = row.get(col_pob_cap_map)
+            pob_v = 50 if (pob_v is None or pd.isna(pob_v)) else pob_v
+            radius = max(3, min(16, 3 + 13 * (pob_v / pob_max_cap) ** 0.4))
+            cat_v  = cat_cap(pob_v)
+            color  = COLORES_CAP.get(cat_v, "#CBD5E1")
+            tooltip_cap = (
+                f"<b>{row['NOMBCCPP']}</b><br>"
+                f"{row['NOMBDIST']} — {row['NOMBDEP']}<br>"
+                f"Pob. {anno_label}: {int(pob_v):,}<br>"
+                f"Categoría: {cat_v}"
+            )
+            folium.CircleMarker(
+                location=[row["Y"], row["X"]],
+                radius=radius,
+                color="#ffffff", weight=0.5,
+                fill=True, fill_color=color, fill_opacity=0.85,
+                tooltip=folium.Tooltip(tooltip_cap, sticky=False),
+            ).add_to(m2)
+
+        leyenda_cap = f"""
+        <div style="position:fixed;bottom:14px;left:14px;z-index:1000;
+                    background:white;padding:10px 14px;border-radius:8px;
+                    border:1px solid #e2e8f0;font-size:11px;
+                    box-shadow:0 2px 5px rgba(0,0,0,.12);max-width:270px">
+          <b>Capitales que NO cumplen (umbral 1,500 hab.):</b><br>
+          <span style="color:#6B0000">&#9679;</span> Menos de 250 hab.<br>
+          <span style="color:#C0392B">&#9679;</span> 250 a 750 hab.<br>
+          <span style="color:#F1948A">&#9679;</span> 750 a 1,500 hab.<br>
+          <b>Capitales que SÍ cumplen:</b><br>
+          <span style="color:#2E75B6">&#9679;</span> Más de 1,500 hab.<br>
+          <span style="color:#CBD5E1">&#9679;</span> Sin datos<br>
+          <span style="font-size:10px;color:#64748b">Tamaño ∝ Pob. · Censo {anno_label} · INEI</span>
+        </div>"""
+        m2.get_root().html.add_child(folium.Element(leyenda_cap))
+        st_folium(m2, width=None, height=420, returned_objects=[])
 
 
 with col_ref:
@@ -351,33 +409,6 @@ with col_ref:
     </div>
     """, unsafe_allow_html=True)
 
-    # Variación entre censos
-    st.markdown('<div class="section-title" style="margin-top:.8rem">'
-                'Variación por categoría · 2017 → 2025</div>',
-                unsafe_allow_html=True)
-
-    var_data = []
-    for cat in CATEGORIAS:
-        n17 = int((df["CAT_2017"] == cat).sum())
-        n25 = int((df["CAT_2025"] == cat).sum())
-        var_data.append({"Categoría": cat, "2017": n17, "2025": n25,
-                         "Variación": n25 - n17})
-    df_var = pd.DataFrame(var_data)
-
-    def color_var(v):
-        if v > 0:  return "color: #991B1B"
-        if v < 0:  return "color: #166534"
-        return "color: #64748b"
-
-    st.dataframe(
-        df_var.style.map(
-            lambda v: color_var(v) if isinstance(v, int) and v != 0 else "",
-            subset=["Variación"]
-        ),
-        use_container_width=True,
-        hide_index=True,
-        height=175,
-    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -398,13 +429,26 @@ with col_nac:
     counts_25 = df["CAT_2025"].value_counts().reindex(CATEGORIAS, fill_value=0)
     colores   = [COLORES_CAT[c] for c in CATEGORIAS]
 
+    # Tonalidades sólidas 2025 / atenuadas 2017 — una barra por cada categoría
+    COLORES_2025 = {
+        "Menos de 500 hab.":    "#6B0000",
+        "500 a 1,500 hab.":     "#C0392B",
+        "1,500 a 4,800 hab.":   "#F1948A",
+        "Más de 4,800 hab.":    "#2E75B6",
+    }
+    COLORES_2017 = {
+        "Menos de 500 hab.":    "#A04040",
+        "500 a 1,500 hab.":     "#E07070",
+        "1,500 a 4,800 hab.":   "#F8C0B0",
+        "Más de 4,800 hab.":    "#7AAED6",
+    }
     fig_nac = go.Figure()
     fig_nac.add_trace(go.Bar(
         name="2025 (Censo INEI)",
         y=CATEGORIAS,
         x=counts_25.values,
         orientation="h",
-        marker_color=colores,
+        marker_color=[COLORES_2025[c] for c in CATEGORIAS],
         text=[f"{v:,}" for v in counts_25.values],
         textposition="outside",
         textfont_size=10,
@@ -415,8 +459,7 @@ with col_nac:
         y=CATEGORIAS,
         x=counts_17.values,
         orientation="h",
-        marker_color=colores,
-        marker_opacity=0.5,
+        marker_color=[COLORES_2017[c] for c in CATEGORIAS],
         text=[f"{v:,}" for v in counts_17.values],
         textposition="outside",
         textfont_size=10,
@@ -424,11 +467,19 @@ with col_nac:
     ))
     fig_nac.update_layout(
         barmode="group",
-        height=290,
-        margin=dict(t=10, b=10, l=10, r=70),
+        height=310,
+        margin=dict(t=10, b=10, l=10, r=150),
         xaxis=dict(title="N.° de distritos", gridcolor="#f1f5f9", tickfont_size=9),
         yaxis=dict(tickfont_size=10, autorange="reversed"),
-        legend=dict(orientation="h", y=1.08, x=0, font_size=10),
+        legend=dict(
+            orientation="v",
+            x=1.02, y=0.5,
+            xanchor="left", yanchor="middle",
+            font_size=10,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#e2e8f0",
+            borderwidth=1,
+        ),
         plot_bgcolor="white",
         paper_bgcolor="rgba(0,0,0,0)",
     )
@@ -474,10 +525,18 @@ with col_dep:
     fig_dep.update_layout(
         barmode="stack",
         height=340,
-        margin=dict(t=10, b=10, l=10, r=20),
+        margin=dict(t=10, b=10, l=10, r=130),
         xaxis=dict(title="N.° de distritos", gridcolor="#f1f5f9", tickfont_size=9),
         yaxis=dict(tickfont_size=10),
-        legend=dict(orientation="h", y=1.05, x=0, font_size=10),
+        legend=dict(
+            orientation="v",
+            x=1.02, y=0.5,
+            xanchor="left", yanchor="middle",
+            font_size=10,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#e2e8f0",
+            borderwidth=1,
+        ),
         plot_bgcolor="white",
         paper_bgcolor="rgba(0,0,0,0)",
     )
@@ -516,28 +575,40 @@ tabla = df[cols_tabla].rename(columns={
     col_brecha:    f"Brecha vs. 4,800 ({anno_label})",
 })
 
-# Filtros rápidos
-col_f1, col_f2 = st.columns([2, 1])
-with col_f1:
-    busqueda = st.text_input(
-        "Buscar", placeholder="🔍 Buscar por ubigeo, nombre de distrito o departamento",
-        label_visibility="collapsed",
-    )
-with col_f2:
+# Menú en cascada + filtro por categoría
+cc1, cc2, cc3, cc4 = st.columns([1, 1, 1, 1])
+
+with cc1:
+    lista_dep = ["Todos"] + sorted(tabla["Departamento"].dropna().unique().tolist())
+    dep_sel = st.selectbox("Departamento", lista_dep, index=0,
+                           key="dep_sel_p3", label_visibility="collapsed")
+with cc2:
+    if dep_sel != "Todos":
+        provs = sorted(tabla[tabla["Departamento"] == dep_sel]["Provincia"]
+                       .dropna().unique().tolist())
+    else:
+        provs = sorted(tabla["Provincia"].dropna().unique().tolist())
+    lista_prov = ["Todas"] + provs
+    prov_sel = st.selectbox("Provincia", lista_prov, index=0,
+                            key="prov_sel_p3", label_visibility="collapsed")
+with cc3:
+    mask_d = pd.Series([True] * len(tabla), index=tabla.index)
+    if dep_sel  != "Todos":  mask_d &= tabla["Departamento"] == dep_sel
+    if prov_sel != "Todas":  mask_d &= tabla["Provincia"]    == prov_sel
+    dists      = sorted(tabla[mask_d]["Distrito"].dropna().unique().tolist())
+    lista_dist = ["Todos"] + dists
+    dist_sel = st.selectbox("Distrito", lista_dist, index=0,
+                            key="dist_sel_p3", label_visibility="collapsed")
+with cc4:
     cat_sel = st.selectbox(
-        "Filtrar por categoría",
-        ["Todas"] + CATEGORIAS,
-        label_visibility="collapsed",
+        "Categoría", ["Todas"] + CATEGORIAS, index=0,
+        key="cat_sel_p3", label_visibility="collapsed",
     )
 
 # Aplicar filtros
-if busqueda:
-    mask = (
-        tabla["Distrito"].str.contains(busqueda.upper(), na=False) |
-        tabla["Departamento"].str.contains(busqueda.upper(), na=False) |
-        tabla["UBIGEO"].astype(str).str.contains(busqueda, na=False)
-    )
-    tabla = tabla[mask]
+if dep_sel  != "Todos":  tabla = tabla[tabla["Departamento"] == dep_sel]
+if prov_sel != "Todas":  tabla = tabla[tabla["Provincia"]    == prov_sel]
+if dist_sel != "Todos":  tabla = tabla[tabla["Distrito"]     == dist_sel]
 
 col_cat_tabla = f"Categoría {anno_label}"
 if cat_sel != "Todas" and col_cat_tabla in tabla.columns:

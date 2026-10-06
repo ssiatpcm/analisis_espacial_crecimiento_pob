@@ -168,7 +168,7 @@ with st.sidebar:
     st.markdown("## ⚖️ Filtro")
     anno = st.radio(
         "Año censal",
-        ["2017 — Censo INEI", "2025 — Censo INEI"],
+        ["2017", "2025"],
         index=1,
     )
     usar_2025  = anno == "2025 — Censo INEI"
@@ -185,12 +185,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("""
     **Marco normativo**
-    - Ley N.° 27795
-    - TUO DS 134-2025-PCM
-    - Tabla N°1 (DS 191-2020-PCM)
-    - Tabla N°2 (RVM 005-2019-PCM)
+    - Ley N.° 27795, Ley de Demarcación y Organización Territorial
+    - D.S. N° 134-2025-PCM, que aprueba el Texto Único Ordenado (TUO) del Reglamento de la Ley N.° 27795, aprobado por D.S. N° 191-2020-PCM
     """)
-    st.caption("Umbral mínimo absoluto: **4,800 hab.** (tipologías B1/B2/B3 · Tabla N°1)")
+    st.caption("Umbral mínimo absoluto: **4,800 hab.** (Tabla N°1)")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -199,7 +197,7 @@ with st.sidebar:
 st.markdown(f"""
 <div class="header-banner">
   <h2>⚖️ Brechas normativas — Requisito poblacional mínimo</h2>
-  <p>TUO DS 134-2025-PCM · Tablas N°1 y N°2 · Año censal seleccionado:
+  <p>Tablas N°1 y N°2 del Anexo del Reglamento de la Ley N° 27795 · Año censal seleccionado:
      <b>{anno_label}</b> · Umbral mínimo: <b>4,800 hab.</b> · SSIAT / SDOT-PCM · 2026</p>
 </div>
 """, unsafe_allow_html=True)
@@ -223,11 +221,11 @@ for col_st, cls, label, valor, sub, color in [
     (k1, "blue",  "🗺️ Total distritos",
      f"{1874 if not usar_2025 else 1892:,}",
      "Base censo 2017" if not usar_2025 else "Base censo 2025", "#1E40AF"),
-    (k2, "green", f"✅ Cumplen ≥ 4,800 hab.",
+    (k2, "green", f"✅ Distritos Cumplen ≥ 4,800 hab.",
      f"{n_cumple:,}",
      f"{n_cumple/total*100:.1f}% · {signo}{diff_cumple} vs. {anno_otro}",
      "#166534"),
-    (k3, "red",   f"❌ No cumplen < 4,800 hab.",
+    (k3, "red",   f"❌ Distritos No cumplen < 4,800 hab.",
      f"{n_nc:,}",
      f"{n_nc/total*100:.1f}% · principalmente Sierra",
      "#991B1B"),
@@ -403,9 +401,9 @@ with col_ref:
 
     st.markdown("""
     <div class="norma-note">
-      El umbral de <b>4,800 hab.</b> (T1 · B1/B2/B3) es el mínimo
-      absoluto para la creación distrital y se usa como referencia
-      universal en el mapa y los gráficos.
+      Los umbrales de <b>4,800 hab.</b> y <b>1,500 hab.</b> son los mínimos
+      poblacionales (Tabla N° 1) para la creación distrital y la propuesta de capital respectivamente, y se usan como referencias
+      universales en el mapa y los gráficos.
     </div>
     """, unsafe_allow_html=True)
 
@@ -415,14 +413,14 @@ with col_ref:
 # FILA 3 — Gráfico nacional + Gráfico por departamento
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
-st.markdown('<div class="section-title">Análisis por categoría poblacional</div>',
+st.markdown('<div class="section-title">Análisis por requisito de volumen poblacional</div>',
             unsafe_allow_html=True)
 
 col_nac, col_dep = st.columns(2)
 
 # ── Gráfico 1: Nacional 2017 vs 2025 ───────────────────────────────────────
 with col_nac:
-    st.markdown('<div class="section-title">Distritos por categoría — 2017 vs 2025</div>',
+    st.markdown('<div class="section-title">Distritos por requisito de volumen poblacional, según 2017 y 2025</div>',
                 unsafe_allow_html=True)
 
     counts_17 = df["CAT_2017"].value_counts().reindex(CATEGORIAS, fill_value=0)
@@ -488,8 +486,8 @@ with col_nac:
     pct_nc = (df[col_cat] != "Más de 4,800 hab.").sum() / total * 100
     st.caption(
         f"Censo {anno_label}: el **{pct_nc:.1f}%** de los distritos "
-        f"no alcanza el umbral mínimo de 4,800 hab. establecido en "
-        f"la Tabla N°1 del TUO DS 134-2025-PCM."
+        f"no alcanza el umbral mínimo poblacional de 4,800 hab. establecido en "
+        f"la Tabla N°1 del Anexo del Reglamento de la Ley N° 27795."
     )
 
 

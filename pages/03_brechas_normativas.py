@@ -197,7 +197,7 @@ with st.sidebar:
 st.markdown(f"""
 <div class="header-banner">
   <h2>⚖️ Brechas normativas — Requisito poblacional mínimo</h2>
-  <p>Tablas N°1 y N°2 del Anexo del Reglamento de la Ley N° 27795 · Año censal seleccionado:
+  <p>Tablas N° 1 y N° 2 del Anexo del Reglamento de la Ley N° 27795 · Año censal seleccionado:
      <b>{anno_label}</b> · Umbral mínimo: <b>4,800 hab.</b> · SSIAT / SDOT-PCM · 2026</p>
 </div>
 """, unsafe_allow_html=True)
@@ -413,14 +413,14 @@ with col_ref:
 # FILA 3 — Gráfico nacional + Gráfico por departamento
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
-st.markdown('<div class="section-title">Análisis por requisito de volumen poblacional</div>',
+st.markdown('<div class="section-title">Análisis por volumen poblacional</div>',
             unsafe_allow_html=True)
 
 col_nac, col_dep = st.columns(2)
 
 # ── Gráfico 1: Nacional 2017 vs 2025 ───────────────────────────────────────
 with col_nac:
-    st.markdown('<div class="section-title">Distritos por requisito de volumen poblacional, según 2017 y 2025</div>',
+    st.markdown('<div class="section-title">Distritos por rango de volumen poblacional, según 2017 y 2025</div>',
                 unsafe_allow_html=True)
 
     counts_17 = df["CAT_2017"].value_counts().reindex(CATEGORIAS, fill_value=0)
@@ -442,7 +442,7 @@ with col_nac:
     }
     fig_nac = go.Figure()
     fig_nac.add_trace(go.Bar(
-        name="2025 (Censo INEI)",
+        name="2025",
         y=CATEGORIAS,
         x=counts_25.values,
         orientation="h",
@@ -453,7 +453,7 @@ with col_nac:
         offsetgroup=1,
     ))
     fig_nac.add_trace(go.Bar(
-        name="2017 (Censo INEI)",
+        name="2017",
         y=CATEGORIAS,
         x=counts_17.values,
         orientation="h",
@@ -540,12 +540,12 @@ with col_dep:
     )
     st.plotly_chart(fig_dep, use_container_width=True)
     st.caption(f"Censo {anno_label} · Ancash, Lima y Ayacucho concentran "
-               "el mayor número de distritos que no alcanzan el umbral mínimo.")
+               "el mayor número de distritos que no alcanzan el umbral mínimo poblacional.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 4 — Tabla detalle
-# ══════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════
 st.markdown("---")
 st.markdown('<div class="section-title">'
             'Detalle por distrito — categoría y brecha respecto al umbral mínimo</div>',
@@ -634,7 +634,5 @@ st.download_button(
 # ── Footer ──────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption(
-    "Marco normativo: Ley N.° 27795 · TUO DS 134-2025-PCM · Art. 14 · "
-    "Tabla N°1 (DS 191-2020-PCM) · Tabla N°2 (RVM 005-2019-PCM) · "
-    "Datos: INEI Censos 2017 y 2025 · Elaborado por SSIAT · SDOT-PCM · 2026"
+    "Fuente: INEI - Censos 2017 y 2025. Tipología de Distritos - SDOT-PCM 2025 · Elaborado por SSIAT · SDOT-PCM · 2026"
 )

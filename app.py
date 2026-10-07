@@ -27,7 +27,7 @@ st.markdown("""
 st.markdown("""
 <div class="main-header">
   <h1>🗺️ Análisis Espacial de Crecimiento Poblacional en el Perú</h1>
-  <p>Subsecretaría de Información y Análisis Territorial · SDOT / PCM · 2026</p>
+  <p>Subsecretaría de Información y Análisis Territorial (SSIAT) · SDOT / PCM · 2026</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -35,12 +35,14 @@ col1, col2 = st.columns([2, 1])
 with col1:
     st.markdown("""
     ### Acerca del tablero
-    Dashboard interactivo para el análisis del crecimiento y decrecimiento
-    poblacional en el Perú a escala distrital y centro poblado, basado en los censos nacionales del INEI
-    2007, 2017 y 2025, y proyecciones al 2025.
+    Tablero interactivo para el análisis del crecimiento y decrecimiento
+    poblacional en el Perú a escala distrital y centro poblado, basado en los tres últimos censos nacionales del INEI
+    2007, 2017 y 2025.
 
-    Los resultados se vinculan al marco normativo de demarcación territorial
-    (Ley N.° 27795 · TUO D.S. 134-2025-PCM).
+    Los resultados se vinculan a lo establecido en la Ley N° 27795, Ley de Demarcación Territorial y su Reglamento 
+    aprobado por D.S. 134-2025-PCM, que aprueba el Texto Único Ordenado (TUO) del Reglamento de la Ley N° 27795, aprobado por D.S. N° 191-2020-PCM.
+    Este marco normativo establece los criterios técnicos para la evaluación de las acciones de demarcación territorial que son competencia de 
+    la Secretaría de Demarcación y Organización Territorial (SDOT) y los Gobiernos Regionales (GORE).
 
     **👈 Selecciona una página en el menú lateral.**
     """)
@@ -48,15 +50,13 @@ with col2:
     st.markdown("### Módulos")
     for ico, nom, desc in [
         ("📊", "P1 · Resumen ejecutivo",    "KPIs, mapa TCM y alertas"),
-        ("🗺️", "P2 · Análisis distrital",   "LISA/Moran y ranking"),
-        ("📍", "P3 · Centros poblados",      "CCPP e IDW"),
-        ("⚖️", "P4 · Brechas normativas",   "Art. 14 TUO — semáforo"),
-        ("🚨", "P5 · Creaciones en riesgo", "Post-2002 con decrecimiento"),
-        ("🔭", "P6 · Proyecciones 2030",    "Escenarios prospectivos"),
+        ("🗺️", "P2 · Análisis distrito y capitales",   "TCM capital y Dinámica capital/distrito"),
+        ("⚖️", "P3 · Brechas normativas",   "Tabla N° 1 y N° 2 del reglamento"),
+        ("🚨", "P4 · Creaciones en riesgo", "Post-2002 con crecimiento/decrecimiento")
     ]:
         st.markdown(f"**{ico} {nom}**  \n_{desc}_")
         st.divider()
 
 st.caption(
-    "INEI Censos 2007, 2017 y 2025 · Proyecciones 2025 · SSIAT · SDOT-PCM · 2026"
+    "INEI Censos 2007, 2017 y 2025 · SSIAT · SDOT-PCM · 2026"
 )

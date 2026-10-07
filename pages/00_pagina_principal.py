@@ -26,7 +26,7 @@ st.markdown("""
 st.markdown("""
 <div class="main-header">
   <h1>🗺️ Análisis Espacial de Crecimiento Poblacional en el Perú</h1>
-  <p>Subsecretaría de Información y Análisis Territorial · SDOT / PCM · 2026</p>
+  <p>Subsecretaría de Información y Análisis Territorial (SSIAT) · SDOT / PCM · 2026</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -50,8 +50,8 @@ with col1:
     st.markdown("---")
     st.markdown("""
     **Fuentes de datos**
-    - INEI · Censos Nacionales de Población y Vivienda 2007, 2017 y 2025
-    - SDOT-PCM · Tipología de Distritos de las 1,892 circunscripciones territoriales (2025)
+    - INEI · Censos Nacionales de Población y Vivienda 2007, 2017 y 2025.
+    - SDOT-PCM · Tipología de Distritos de las 1,892 circunscripciones territoriales (2025).
     """)
 
 with col2:
@@ -74,6 +74,6 @@ with col2:
 
 st.markdown("---")
 st.caption(
-    "INEI Censos 2007, 2017 y 2025 · "
+    "Fuente: INEI Censos 2007, 2017 y 2025 · "
     "Elaborado por SSIAT · SDOT-PCM · 2026"
 )

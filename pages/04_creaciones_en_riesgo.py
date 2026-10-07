@@ -127,6 +127,13 @@ def cargar_creaciones():
     )
 
     merged["AMB_INT"] = merged["AMB_INT"].fillna("Sin ámbito especial")
+    LABEL_AMB = {
+        "VRAEM":         "VRAEM",
+        "Alto Huallaga": "Alto Huallaga",
+        "ACF":           "Áreas Críticas Fronterizas (ACF)",
+        "Sin ámbito especial": "Sin ámbito especial",
+    }
+    merged["AMB_INT"] = merged["AMB_INT"].map(LABEL_AMB).fillna(merged["AMB_INT"])
 
     def clasif_riesgo(r):
         t17, t25 = r["TC_07_17"], r["TC_17_25"]
@@ -171,11 +178,30 @@ with st.sidebar:
 
     ambitos_disp = ["Todos"] + sorted(crea["AMB_INT"].dropna().unique().tolist())
     ambito_sel   = st.selectbox("Ámbito de influencia", ambitos_disp, index=0)
+
+    LABEL_MOD_SIDEBAR = {
+        "IN":  "Interés Nacional (IN)",
+        "SOT": "Saneamiento y Org. Territorial (SOT)",
+        "ZF":  "Zona de Frontera (ZF)",
+    }
+    mods_disp = ["Todas"] + [
+        LABEL_MOD_SIDEBAR.get(m, m)
+        for m in sorted(crea["MODALIDAD"].dropna().unique().tolist())
+    ]
+    modalidad_sel = st.selectbox("Modalidad de creación", mods_disp, index=0)
+    # Mapa inverso para filtrar
+    MOD_INV = {v: k for k, v in LABEL_MOD_SIDEBAR.items()}
+
     st.markdown("---")
     st.caption("Fuente: Shapefile totalcreaciones_dist2002 · SSIAT 2026")
 
-# Aplicar filtro de ámbito
-crea_f = crea.copy() if ambito_sel == "Todos" else crea[crea["AMB_INT"] == ambito_sel]
+# Aplicar filtros de ámbito y modalidad
+crea_f = crea.copy()
+if ambito_sel != "Todos":
+    crea_f = crea_f[crea_f["AMB_INT"] == ambito_sel]
+if modalidad_sel != "Todas":
+    mod_code = MOD_INV.get(modalidad_sel, modalidad_sel)
+    crea_f = crea_f[crea_f["MODALIDAD"] == mod_code]
 orig_f = orig.copy()
 
 
@@ -232,7 +258,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown('<div class="section-title">Distribución espacial — clasificación de riesgo</div>',
             unsafe_allow_html=True)
 
-col_mapa, col_clas = st.columns([1.5, 1])
+col_mapa, col_clas = st.columns([1.8, 1])
 
 with col_mapa:
     tab_crea, tab_orig, tab_ambos = st.tabs([
@@ -296,49 +322,49 @@ with col_mapa:
 
     leyenda_crea = """
     <div style="position:fixed;bottom:14px;left:14px;z-index:1000;
-                background:white;padding:8px 12px;border-radius:8px;
-                border:1px solid #e2e8f0;font-size:10px;
+                background:white;padding:11px 15px;border-radius:8px;
+                border:1px solid #e2e8f0;font-size:12px;line-height:1.7;
                 box-shadow:0 2px 5px rgba(0,0,0,.12)">
-      <b>Creaciones · clasificación de riesgo</b><br>
-      <span style="color:#10B981">■</span> Crecimiento sostenido<br>
-      <span style="color:#60A5FA">■</span> Crecimiento (período reciente)<br>
-      <span style="color:#F59E0B">■</span> Reversión (↑→↓)<br>
-      <span style="color:#EF4444">■</span> Decrecimiento<br>
-      <span style="color:#7F1D1D">■</span> Doble decrecimiento<br>
-      <span style="color:#CBD5E1">■</span> Sin datos
+      <b style="font-size:12px">Creaciones · clasificación de riesgo</b><br>
+      <span style="color:#10B981;font-size:14px">■</span> Crecimiento sostenido<br>
+      <span style="color:#60A5FA;font-size:14px">■</span> Crecimiento (período reciente)<br>
+      <span style="color:#F59E0B;font-size:14px">■</span> Reversión (↑→↓)<br>
+      <span style="color:#EF4444;font-size:14px">■</span> Decrecimiento<br>
+      <span style="color:#7F1D1D;font-size:14px">■</span> Doble decrecimiento<br>
+      <span style="color:#CBD5E1;font-size:14px">■</span> Sin datos
     </div>"""
 
     leyenda_orig = """
     <div style="position:fixed;bottom:14px;left:14px;z-index:1000;
-                background:white;padding:8px 12px;border-radius:8px;
-                border:1px solid #e2e8f0;font-size:10px;
+                background:white;padding:11px 15px;border-radius:8px;
+                border:1px solid #e2e8f0;font-size:12px;line-height:1.7;
                 box-shadow:0 2px 5px rgba(0,0,0,.12)">
-      <b>Distritos de origen · categoría</b><br>
-      <span style="color:#10B981">■</span> Crecimiento sostenido<br>
-      <span style="color:#60A5FA">■</span> Recuperación (↓→↑)<br>
-      <span style="color:#F59E0B">■</span> Decrecimiento reciente<br>
-      <span style="color:#7F1D1D">■</span> Despoblamiento persistente<br>
-      <span style="color:#CBD5E1">■</span> Sin datos
+      <b style="font-size:12px">Distritos de origen · categoría</b><br>
+      <span style="color:#10B981;font-size:14px">■</span> Crecimiento sostenido<br>
+      <span style="color:#60A5FA;font-size:14px">■</span> Recuperación (↓→↑)<br>
+      <span style="color:#F59E0B;font-size:14px">■</span> Decrecimiento reciente<br>
+      <span style="color:#7F1D1D;font-size:14px">■</span> Despoblamiento persistente<br>
+      <span style="color:#CBD5E1;font-size:14px">■</span> Sin datos
     </div>"""
 
     with tab_crea:
         m = base_map()
         add_layer_crea(m, crea_f, col_tcm)
         m.get_root().html.add_child(folium.Element(leyenda_crea))
-        st_folium(m, width=None, height=400, returned_objects=[])
+        st_folium(m, width=None, height=480, returned_objects=[])
 
     with tab_orig:
         m2 = base_map()
         add_layer_orig(m2, orig_f)
         m2.get_root().html.add_child(folium.Element(leyenda_orig))
-        st_folium(m2, width=None, height=400, returned_objects=[])
+        st_folium(m2, width=None, height=480, returned_objects=[])
 
     with tab_ambos:
         m3 = base_map()
         add_layer_orig(m3, orig_f)
         add_layer_crea(m3, crea_f, col_tcm)
         m3.get_root().html.add_child(folium.Element(leyenda_crea))
-        st_folium(m3, width=None, height=400, returned_objects=[])
+        st_folium(m3, width=None, height=480, returned_objects=[])
 
 
 with col_clas:
@@ -364,44 +390,34 @@ with col_clas:
         </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown('<div class="section-title">Riesgo por ámbito de influencia</div>',
+    st.markdown('<div class="section-title">Categoría — distritos de origen</div>',
                 unsafe_allow_html=True)
 
-    amb = crea.groupby("AMB_INT").agg(
-        total   = ("UBIGEO", "count"),
-        riesgo  = (col_tcm, lambda x: (x < 0).sum()),
-    ).reset_index()
-    amb["pct"] = amb["riesgo"] / amb["total"] * 100
-
-    fig_amb = go.Figure()
-    fig_amb.add_trace(go.Bar(
-        y=amb["AMB_INT"], x=amb["total"],
-        orientation="h", marker_color="#BAE6FD",
-        name="Total", offsetgroup=1,
-        text=amb["total"], textposition="outside", textfont_size=9,
-    ))
-    fig_amb.add_trace(go.Bar(
-        y=amb["AMB_INT"], x=amb["riesgo"],
-        orientation="h", marker_color="#EF4444",
-        name="Con riesgo", offsetgroup=2,
-        text=amb["riesgo"], textposition="outside", textfont_size=9,
-    ))
-    fig_amb.update_layout(
-        barmode="group", height=175,
-        margin=dict(t=5, b=5, l=10, r=40),
-        xaxis=dict(gridcolor="#f1f5f9", tickfont_size=9),
-        yaxis=dict(tickfont_size=10),
-        legend=dict(orientation="h", y=1.1, x=0, font_size=9),
-        plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
-    )
-    st.plotly_chart(fig_amb, use_container_width=True)
+    counts_orig_side = orig_f["CAT_DESP"].value_counts()
+    total_orig_side  = len(orig_f)
+    for cat, color in COLORES_DESP.items():
+        n = counts_orig_side.get(cat, 0)
+        if n == 0:
+            continue
+        pct = n / total_orig_side * 100
+        desc = DESCRIPCION_DESP.get(cat, "")
+        st.markdown(f"""
+        <div class="riesgo-row">
+          <div style="width:10px;height:10px;border-radius:50%;background:{color};
+                      flex-shrink:0;margin-top:3px"></div>
+          <div>
+            <span style="font-weight:500;font-size:.83rem">{cat}</span>
+            <span style="color:#64748b;font-size:.83rem"> — {n} ({pct:.1f}%)</span><br>
+            <span style="font-size:.72rem;color:#94a3b8">{desc}</span>
+          </div>
+        </div>""", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 3 — Gráfico temporal + modalidad + origen
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
-col_yr, col_mod, col_orig = st.columns(3)
+col_yr, col_mod, col_amb = st.columns(3)
 
 with col_yr:
     st.markdown('<div class="section-title">'
@@ -432,7 +448,7 @@ with col_yr:
     ))
     fig_yr.update_layout(
         height=280,
-        margin=dict(t=10, b=10, l=10, r=50),
+        margin=dict(t=10, b=10, l=10, r=120),
         xaxis=dict(tickfont_size=9, tickangle=45),
         yaxis=dict(title="N° creaciones", gridcolor="#f1f5f9",
                    tickfont_size=9),
@@ -440,7 +456,13 @@ with col_yr:
                     tickfont_size=9, range=[0, 100],
                     tickformat=".0f",
                     showgrid=False),
-        legend=dict(orientation="h", y=1.08, x=0, font_size=9),
+        legend=dict(
+            orientation="v", x=1.02, y=0.5,
+            xanchor="left", yanchor="middle",
+            font_size=9,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#e2e8f0", borderwidth=1,
+        ),
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         barmode="overlay",
     )
@@ -459,8 +481,11 @@ with col_mod:
         decrece = ("TC_17_25", lambda x: (x < 0).sum()),
     ).reset_index().sort_values("total", ascending=False)
 
-    LABEL_MOD = {"IN": "Iniciativa (IN)", "SOT": "Segreg. territorial (SOT)",
-                 "ZF": "Zona fronteriza (ZF)"}
+    LABEL_MOD = {
+        "IN":  "Interés Nacional (IN)",
+        "SOT": "Saneamiento y Organización Territorial (SOT)",
+        "ZF":  "Zona de Frontera (ZF)",
+    }
     mod["label"] = mod["MODALIDAD"].map(LABEL_MOD).fillna(mod["MODALIDAD"])
 
     fig_mod = go.Figure()
@@ -476,40 +501,64 @@ with col_mod:
     ))
     fig_mod.update_layout(
         barmode="group", height=280,
-        margin=dict(t=10, b=10, l=10, r=10),
+        margin=dict(t=10, b=10, l=10, r=130),
         xaxis_tickfont_size=10,
         yaxis=dict(gridcolor="#f1f5f9", tickfont_size=9),
-        legend=dict(orientation="h", y=1.08, x=0, font_size=10),
+        legend=dict(
+            orientation="v", x=1.02, y=0.5,
+            xanchor="left", yanchor="middle",
+            font_size=10,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#e2e8f0", borderwidth=1,
+        ),
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
     )
     st.plotly_chart(fig_mod, use_container_width=True)
     st.caption("Iniciativa (IN) concentra el mayor número de creaciones "
                "con riesgo demográfico (7 de 9 casos).")
 
-with col_orig:
+with col_amb:
     st.markdown('<div class="section-title">'
-                'Distritos de origen — categoría demográfica</div>',
+                'Riesgo por ámbito de influencia</div>',
                 unsafe_allow_html=True)
 
-    counts_o = orig_f["CAT_DESP"].value_counts()
-    total_o  = len(orig_f)
+    amb = crea.groupby("AMB_INT").agg(
+        total  = ("UBIGEO", "count"),
+        riesgo = (col_tcm, lambda x: (x < 0).sum()),
+    ).reset_index()
+    amb["pct"] = (amb["riesgo"] / amb["total"] * 100).round(1)
 
-    for cat, color in COLORES_DESP.items():
-        n = counts_o.get(cat, 0)
-        if n == 0:
-            continue
-        pct = n / total_o * 100
-        desc = DESCRIPCION_DESP.get(cat, "")
-        st.markdown(f"""
-        <div class="riesgo-row">
-          <div style="width:10px;height:10px;border-radius:50%;background:{color};
-                      flex-shrink:0;margin-top:3px"></div>
-          <div>
-            <span style="font-weight:500;font-size:.83rem">{cat}</span>
-            <span style="color:#64748b;font-size:.83rem"> — {n} ({pct:.1f}%)</span><br>
-            <span style="font-size:.72rem;color:#94a3b8">{desc}</span>
-          </div>
-        </div>""", unsafe_allow_html=True)
+    fig_amb = go.Figure()
+    fig_amb.add_trace(go.Bar(
+        y=amb["AMB_INT"], x=amb["total"],
+        orientation="h", marker_color="#BAE6FD",
+        name="Total", offsetgroup=1,
+        text=amb["total"], textposition="outside", textfont_size=9,
+    ))
+    fig_amb.add_trace(go.Bar(
+        y=amb["AMB_INT"], x=amb["riesgo"],
+        orientation="h", marker_color="#EF4444",
+        name="Con riesgo", offsetgroup=2,
+        text=amb["riesgo"], textposition="outside", textfont_size=9,
+    ))
+    fig_amb.update_layout(
+        barmode="group", height=280,
+        margin=dict(t=5, b=5, l=10, r=110),
+        xaxis=dict(gridcolor="#f1f5f9", tickfont_size=9),
+        yaxis=dict(tickfont_size=9),
+        legend=dict(
+            orientation="v",
+            x=1.02, y=0.5,
+            xanchor="left", yanchor="middle",
+            font_size=9,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#e2e8f0", borderwidth=1,
+        ),
+        plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(fig_amb, use_container_width=True)
+    st.caption("ACF = Áreas Críticas Fronterizas · "
+               "Mayor proporción de riesgo en ACF (33%).")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

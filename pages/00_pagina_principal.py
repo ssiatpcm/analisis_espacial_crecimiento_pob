@@ -34,12 +34,15 @@ col1, col2 = st.columns([2, 1])
 with col1:
     st.markdown("""
     ### Acerca del tablero
-    Dashboard interactivo para el análisis del crecimiento y decrecimiento
-    poblacional en el Perú a escala distrital, basado en los censos INEI
+    Tablero interactivo para el análisis del crecimiento y decrecimiento
+    poblacional en el Perú a escala distrital y centro poblado, basado en los tres últimos censos nacionales del INEI
     2007, 2017 y 2025.
 
-    Los resultados se vinculan al marco normativo de demarcación territorial
-    **(Ley N.° 27795 · TUO DS 134-2025-PCM)**.
+    Los resultados se vinculan a lo establecido en la **Ley N° 27795, Ley de Demarcación Territorial** y su Reglamento 
+    aprobado por D.S. 134-2025-PCM, que aprueba el Texto Único Ordenado (TUO) del Reglamento de la Ley N° 27795, aprobado por D.S. N° 191-2020-PCM.
+
+    Este marco normativo establece los criterios técnicos para la evaluación de las acciones de demarcación territorial que son competencia de 
+    la Secretaría de Demarcación y Organización Territorial (SDOT) y los Gobiernos Regionales (GORE).
 
     **👈 Selecciona una página en el menú lateral.**
     """)
@@ -48,9 +51,7 @@ with col1:
     st.markdown("""
     **Fuentes de datos**
     - INEI · Censos Nacionales de Población y Vivienda 2007, 2017 y 2025
-    - Shapefile distrital · 1,892 circunscripciones territoriales
-    - Dataset de capitales distritales · capitales_censo25_1892
-    - Shapefile de creaciones distritales post-2002 · 64 distritos
+    - SDOT-PCM · Tipología de Distritos de las 1,892 circunscripciones territoriales (2025)
     """)
 
 with col2:

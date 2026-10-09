@@ -169,7 +169,7 @@ with st.sidebar:
     st.markdown("""
     **Marco normativo**
     - Ley N.° 27795, Ley de Demarcación y Organización Territorial
-    - D.S. N° 134-2025-PCM, TUO del Reglamento de la Ley N.° 27795
+    - D.S. N° 134-2025-PCM, que aprueba el TUO del Reglamento de la Ley N.° 27795, aprobado por D.S. N° 191-2020-PCM
     """)
     st.caption("Umbral mínimo absoluto: **4,800 hab.** (Tabla N°1)")
 
@@ -379,14 +379,14 @@ with col_ref:
                 unsafe_allow_html=True)
 
     tab_t1, tab_t2 = st.tabs([
-        "Tabla N°1 — Creación distrital",
-        "Tabla N°2 — Fusión / reorganización",
+        "Tabla N°1",
+        "Tabla N°2",
     ])
 
     with tab_t1:
-        st.caption("DS 191-2020-PCM · Requisitos mínimos para creación de distritos")
+    st.caption("Elaborado sobre la base de la Tipología de Distritos aprobada por Resolución Viceministerial N° 005-2019-PCM/DVGT")
         tbl1 = {
-            "Tipología": ["A0", "A1", "A2 (cercado)", "A2 (no cercado)",
+            "Tipología de distritos": ["A0", "A1", "A2 (distrito cercado)", "A2 (distrito no cercado)",
                           "A3.1", "A3.2 y AB", "B1, B2, B3"],
             "Pob. mín. distrito":
                 ["100,000", "50,000", "20,000", "20,000",
@@ -399,15 +399,15 @@ with col_ref:
                      width="stretch", hide_index=True, height=262)
         st.markdown("""
         <div class="norma-note">
-          El umbral de <b>4,800 hab.</b> (dist.) y <b>1,500 hab.</b> (capital)
+          El umbral de <b>4,800 hab.</b> (distrito) y <b>1,500 hab.</b> (capital)
           para tipologías B1/B2/B3 es el mínimo absoluto y se usa como
           referencia universal en el mapa y los gráficos.
         </div>""", unsafe_allow_html=True)
 
     with tab_t2:
-        st.caption("RVM 005-2019-PCM · Requisitos mínimos para fusión y reorganización territorial")
+        st.caption("Elaborado sobre la base de la Tipología de Distritos aprobada por Resolución Viceministerial N° 005-2019-PCM/DVGT")
         tbl2 = {
-            "Tipología": ["A0", "A1", "A2 (cercado)", "A2 (no cercado)",
+            "Tipología de distritos": ["A0", "A1", "A2 (distrito cercado)", "A2 (distrito no cercado)",
                           "A3.1", "A3.2 y AB", "B1, B2, B3"],
             "Pob. mín. distrito":
                 ["80,000", "40,000", "16,000", "16,000",
@@ -420,9 +420,8 @@ with col_ref:
                      width="stretch", hide_index=True, height=262)
         st.markdown("""
         <div class="norma-note">
-          Los umbrales de la Tabla N°2 son el 80% de los de la Tabla N°1
-          y aplican para procedimientos de fusión o reorganización
-          de circunscripciones existentes.
+          El umbral de <b>3,800 hab.</b> (distrito) y <b>1,200 hab.</b> (capital)
+          para tipologías B1/B2/B3 es el mínimo absoluto en la Tabla N° 2.
         </div>""", unsafe_allow_html=True)
 
 

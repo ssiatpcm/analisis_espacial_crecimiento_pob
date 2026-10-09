@@ -384,7 +384,7 @@ with col_ref:
     ])
 
     with tab_t1:
-    st.caption("Elaborado sobre la base de la Tipología de Distritos aprobada por Resolución Viceministerial N° 005-2019-PCM/DVGT")
+        st.caption("Elaborado sobre la base de la Tipología de Distritos aprobada por Resolución Viceministerial N° 005-2019-PCM/DVGT")
         tbl1 = {
             "Tipología de distritos": ["A0", "A1", "A2 (distrito cercado)", "A2 (distrito no cercado)",
                           "A3.1", "A3.2 y AB", "B1, B2, B3"],

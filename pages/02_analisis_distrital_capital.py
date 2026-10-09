@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.carga_datos import cargar_dataframe, cargar_capitales
+from utils.rendimiento import a_excel, a_csv, capa_puntos
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -226,6 +227,7 @@ with col_mapa:
         ).add_to(m)
 
         pob_max = dff_map[col_pob_cap].replace(0, np.nan).max()
+        colores, radios, tooltips = [], [], []
 
         for _, row in dff_map.iterrows():
             pob = row.get(col_pob_cap)
@@ -257,14 +259,14 @@ with col_mapa:
                     f"{label_pob_cap}: {int(pob_din):,}"
                 )
 
-            folium.CircleMarker(
-                location=[row["Y"], row["X"]],
-                radius=radius,
-                color="#ffffff", weight=0.5,
-                fill=True, fill_color=color, fill_opacity=0.85,
-                tooltip=folium.Tooltip(tooltip_txt, sticky=False),
-            ).add_to(m)
+            colores.append(color)
+            radios.append(radius)
+            tooltips.append(tooltip_txt)
 
+        # Una sola capa con todos los puntos (mucho más rápida que un
+        # CircleMarker por capital)
+        pts = dff_map[["X", "Y"]].assign(_c=colores, _r=radios, _t=tooltips)
+        capa_puntos(m, pts, "X", "Y", "_c", "_r", "_t")
         return m
 
     with tab_tcm:
@@ -363,7 +365,7 @@ with col_graf1:
             legend=dict(orientation="h", y=1.08, x=0, font_size=10),
             plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         )
-        st.plotly_chart(fig_tipo, use_container_width=True)
+        st.plotly_chart(fig_tipo, width="stretch")
         st.caption(
             f"Período {periodo} · "
             f"Capitales departamentales: "
@@ -372,61 +374,66 @@ with col_graf1:
         )
 
     with tab_dep:
-        st.markdown(
-            '<div class="section-title">'
-            f'Capitales por departamento · crecimiento/decrecimiento ({periodo})</div>',
-            unsafe_allow_html=True,
-        )
-        tipo_sel = st.selectbox(
-            "Tipo de capital",
-            ["Todas"] + ORDEN_TIPO,
-            key="tipo_dep_sel",
-            label_visibility="collapsed",
-        )
+        @st.fragment
+        def grafico_por_departamento():
+            st.markdown(
+                '<div class="section-title">'
+                f'Capitales por departamento · crecimiento/decrecimiento ({periodo})</div>',
+                unsafe_allow_html=True,
+            )
+            tipo_sel = st.selectbox(
+                "Tipo de capital",
+                ["Todas"] + ORDEN_TIPO,
+                key="tipo_dep_sel",
+                label_visibility="collapsed",
+            )
 
-        dep_data = dff.copy()
-        if tipo_sel != "Todas":
-            dep_data = dep_data[dep_data["TIPO_CAPITAL"] == tipo_sel]
+            dep_data = dff.copy()
+            if tipo_sel != "Todas":
+                dep_data = dep_data[dep_data["TIPO_CAPITAL"] == tipo_sel]
 
-        dep_stats = dep_data.groupby("NOMBDEP").agg(
-            crece   = (col_tcm_cap, lambda x: (x > 0).sum()),
-            decrece = (col_tcm_cap, lambda x: (x < 0).sum()),
-        ).reset_index().sort_values("decrece", ascending=True)
+            dep_stats = dep_data.groupby("NOMBDEP").agg(
+                crece   = (col_tcm_cap, lambda x: (x > 0).sum()),
+                decrece = (col_tcm_cap, lambda x: (x < 0).sum()),
+            ).reset_index().sort_values("decrece", ascending=True)
 
-        fig_dep = go.Figure()
-        fig_dep.add_trace(go.Bar(
-            name="Decrecen",
-            y=dep_stats["NOMBDEP"],
-            x=dep_stats["decrece"],
-            orientation="h",
-            marker_color="#EF4444",
-        ))
-        fig_dep.add_trace(go.Bar(
-            name="Crecen",
-            y=dep_stats["NOMBDEP"],
-            x=dep_stats["crece"],
-            orientation="h",
-            marker_color="#10B981",
-        ))
-        fig_dep.update_layout(
-            barmode="stack",
-            height=520,
-            margin=dict(t=10, b=10, l=130, r=130),
-            xaxis=dict(title="N.° de capitales", gridcolor="#f1f5f9",
-                       tickfont_size=9),
-            yaxis=dict(tickfont_size=10),
-            legend=dict(
-                orientation="v",
-                x=1.02, y=0.5,
-                xanchor="left", yanchor="middle",
-                font_size=10,
-                bgcolor="rgba(255,255,255,0.85)",
-                bordercolor="#e2e8f0",
-                borderwidth=1,
-            ),
-            plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
-        )
-        st.plotly_chart(fig_dep, use_container_width=True)
+            fig_dep = go.Figure()
+            fig_dep.add_trace(go.Bar(
+                name="Decrecen",
+                y=dep_stats["NOMBDEP"],
+                x=dep_stats["decrece"],
+                orientation="h",
+                marker_color="#EF4444",
+            ))
+            fig_dep.add_trace(go.Bar(
+                name="Crecen",
+                y=dep_stats["NOMBDEP"],
+                x=dep_stats["crece"],
+                orientation="h",
+                marker_color="#10B981",
+            ))
+            fig_dep.update_layout(
+                barmode="stack",
+                height=520,
+                margin=dict(t=10, b=10, l=130, r=130),
+                xaxis=dict(title="N.° de capitales", gridcolor="#f1f5f9",
+                           tickfont_size=9),
+                yaxis=dict(tickfont_size=10),
+                legend=dict(
+                    orientation="v",
+                    x=1.02, y=0.5,
+                    xanchor="left", yanchor="middle",
+                    font_size=10,
+                    bgcolor="rgba(255,255,255,0.85)",
+                    bordercolor="#e2e8f0",
+                    borderwidth=1,
+                ),
+                plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(fig_dep, width="stretch")
+
+        grafico_por_departamento()
+
 
 
 # ── Distribución por tamaño de capital ────────────────────────────────────
@@ -457,7 +464,7 @@ with col_graf2:
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
     )
-    st.plotly_chart(fig_hist, use_container_width=True)
+    st.plotly_chart(fig_hist, width="stretch")
 
     pct_peq = (dist_rango["< 500"] + dist_rango["500–2k"]) / total_rango * 100
     st.caption(
@@ -469,103 +476,108 @@ with col_graf2:
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 4 — Tabla integrada con cascada + descargas
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("---")
-st.markdown('<div class="section-title">Tabla integrada — distrito y capital</div>',
-            unsafe_allow_html=True)
+# st.fragment: al usar estos filtros solo se re-ejecuta esta sección;
+# los mapas no se reconstruyen ni se reenvían al navegador.
+@st.fragment
+def seccion_tabla():
+    st.markdown("---")
+    st.markdown('<div class="section-title">Tabla integrada — distrito y capital</div>',
+                unsafe_allow_html=True)
 
-# Construir tabla base
-cols_tabla = [c for c in [
-    "UBIGEO", "NOMBDEP", "NOMBPROV", "NOMBDIST", "NOMBCCPP",
-    "REGION_NAT", "TIPOLOGIA", "TIPO_CAPITAL",
-    col_tcm_dist, col_tcm_cap,
-    "POB2017", "POB2025",
-    col_dinamica, "RANGO_POB",
-] if c in dff.columns]
+    # Construir tabla base
+    cols_tabla = [c for c in [
+        "UBIGEO", "NOMBDEP", "NOMBPROV", "NOMBDIST", "NOMBCCPP",
+        "REGION_NAT", "TIPOLOGIA", "TIPO_CAPITAL",
+        col_tcm_dist, col_tcm_cap,
+        "POB2017", "POB2025",
+        col_dinamica, "RANGO_POB",
+    ] if c in dff.columns]
 
-tabla_base = dff[cols_tabla].rename(columns={
-    "NOMBDEP":    "Departamento",
-    "NOMBPROV":   "Provincia",
-    "NOMBDIST":   "Distrito",
-    "NOMBCCPP":   "Capital",
-    "REGION_NAT": "Región",
-    "TIPOLOGIA":  "Tipología",
-    "TIPO_CAPITAL": "Tipo capital",
-    col_tcm_dist: "TCM distrito (%)",
-    col_tcm_cap:  "TCM capital (%)",
-    "POB2017":    "Pob. cap. 2017",
-    "POB2025":    "Pob. cap. 2025",
-    col_dinamica: "Dinámica",
-    "RANGO_POB":  "Tamaño capital",
-})
+    tabla_base = dff[cols_tabla].rename(columns={
+        "NOMBDEP":    "Departamento",
+        "NOMBPROV":   "Provincia",
+        "NOMBDIST":   "Distrito",
+        "NOMBCCPP":   "Capital",
+        "REGION_NAT": "Región",
+        "TIPOLOGIA":  "Tipología",
+        "TIPO_CAPITAL": "Tipo capital",
+        col_tcm_dist: "TCM distrito (%)",
+        col_tcm_cap:  "TCM capital (%)",
+        "POB2017":    "Pob. cap. 2017",
+        "POB2025":    "Pob. cap. 2025",
+        col_dinamica: "Dinámica",
+        "RANGO_POB":  "Tamaño capital",
+    })
 
-# ── Menú en cascada: Departamento → Provincia → Distrito ───────────────────
-c1, c2, c3 = st.columns(3)
+    # ── Menú en cascada: Departamento → Provincia → Distrito ───────────────────
+    c1, c2, c3 = st.columns(3)
 
-with c1:
-    lista_dep = ["Todos"] + sorted(
-        tabla_base["Departamento"].dropna().unique().tolist()
-    )
-    dep_sel = st.selectbox("Departamento", lista_dep, index=0,
-                           key="dep_sel_p2")
-
-with c2:
-    if dep_sel != "Todos":
-        provs = sorted(
-            tabla_base[tabla_base["Departamento"] == dep_sel]["Provincia"]
-            .dropna().unique().tolist()
+    with c1:
+        lista_dep = ["Todos"] + sorted(
+            tabla_base["Departamento"].dropna().unique().tolist()
         )
-    else:
-        provs = sorted(tabla_base["Provincia"].dropna().unique().tolist())
-    lista_prov = ["Todas"] + provs
-    prov_sel = st.selectbox("Provincia", lista_prov, index=0,
-                            key="prov_sel_p2")
+        dep_sel = st.selectbox("Departamento", lista_dep, index=0,
+                               key="dep_sel_p2")
 
-with c3:
-    mask_d = pd.Series([True] * len(tabla_base), index=tabla_base.index)
-    if dep_sel  != "Todos":
-        mask_d &= tabla_base["Departamento"] == dep_sel
-    if prov_sel != "Todas":
-        mask_d &= tabla_base["Provincia"]    == prov_sel
-    dists      = sorted(tabla_base[mask_d]["Distrito"].dropna().unique().tolist())
-    lista_dist = ["Todos"] + dists
-    dist_sel   = st.selectbox("Distrito", lista_dist, index=0,
-                              key="dist_sel_p2")
+    with c2:
+        if dep_sel != "Todos":
+            provs = sorted(
+                tabla_base[tabla_base["Departamento"] == dep_sel]["Provincia"]
+                .dropna().unique().tolist()
+            )
+        else:
+            provs = sorted(tabla_base["Provincia"].dropna().unique().tolist())
+        lista_prov = ["Todas"] + provs
+        prov_sel = st.selectbox("Provincia", lista_prov, index=0,
+                                key="prov_sel_p2")
 
-# Aplicar cascada
-tabla = tabla_base.copy()
-if dep_sel  != "Todos":  tabla = tabla[tabla["Departamento"] == dep_sel]
-if prov_sel != "Todas":  tabla = tabla[tabla["Provincia"]    == prov_sel]
-if dist_sel != "Todos":  tabla = tabla[tabla["Distrito"]     == dist_sel]
+    with c3:
+        mask_d = pd.Series([True] * len(tabla_base), index=tabla_base.index)
+        if dep_sel  != "Todos":
+            mask_d &= tabla_base["Departamento"] == dep_sel
+        if prov_sel != "Todas":
+            mask_d &= tabla_base["Provincia"]    == prov_sel
+        dists      = sorted(tabla_base[mask_d]["Distrito"].dropna().unique().tolist())
+        lista_dist = ["Todos"] + dists
+        dist_sel   = st.selectbox("Distrito", lista_dist, index=0,
+                                  key="dist_sel_p2")
 
-tabla_sorted = tabla.sort_values("TCM distrito (%)")
+    # Aplicar cascada
+    tabla = tabla_base.copy()
+    if dep_sel  != "Todos":  tabla = tabla[tabla["Departamento"] == dep_sel]
+    if prov_sel != "Todas":  tabla = tabla[tabla["Provincia"]    == prov_sel]
+    if dist_sel != "Todos":  tabla = tabla[tabla["Distrito"]     == dist_sel]
 
-st.dataframe(
-    tabla_sorted, use_container_width=True,
-    height=280, hide_index=True,
-)
+    tabla_sorted = tabla.sort_values("TCM distrito (%)")
 
-# Descargas
-fname = f"distrito_capital_{periodo.replace(' ','').replace('–','_')}"
-if dep_sel  != "Todos":  fname += f"_{dep_sel}"
-if prov_sel != "Todas":  fname += f"_{prov_sel}"
-
-col_dl1, col_dl2 = st.columns(2)
-with col_dl1:
-    csv = tabla_sorted.to_csv(index=False, encoding="utf-8-sig")
-    st.download_button(
-        "⬇️ Descargar CSV", data=csv,
-        file_name=f"{fname}.csv", mime="text/csv",
+    st.dataframe(
+        tabla_sorted, width="stretch",
+        height=280, hide_index=True,
     )
-with col_dl2:
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        tabla_sorted.to_excel(writer, index=False, sheet_name="DistritoCapital")
-    st.download_button(
-        "⬇️ Descargar Excel (.xlsx)",
-        data=buffer.getvalue(),
-        file_name=f"{fname}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+
+    # Descargas
+    fname = f"distrito_capital_{periodo.replace(' ','').replace('–','_')}"
+    if dep_sel  != "Todos":  fname += f"_{dep_sel}"
+    if prov_sel != "Todas":  fname += f"_{prov_sel}"
+
+    col_dl1, col_dl2 = st.columns(2)
+    with col_dl1:
+        csv = a_csv(tabla_sorted)
+        st.download_button(
+            "⬇️ Descargar CSV", data=csv,
+            file_name=f"{fname}.csv", mime="text/csv",
+        )
+    with col_dl2:
+        st.download_button(
+            "⬇️ Descargar Excel (.xlsx)",
+            data=a_excel(tabla_sorted, "DistritoCapital"),
+            file_name=f"{fname}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+
+seccion_tabla()
+
 
 st.markdown("---")
 st.caption(

@@ -23,7 +23,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from utils.carga_datos import cargar_dataframe
+from utils.carga_datos import cargar_dataframe, cargar_geo_creaciones
+from utils.rendimiento import geojson_liviano, a_excel, a_csv
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -108,11 +109,7 @@ DESCRIPCION_DESP = {
 # ══════════════════════════════════════════════════════════════════════════════
 @st.cache_data(show_spinner="Cargando creaciones distritales...")
 def cargar_creaciones():
-    shp = ROOT / "data" / "totalcreaciones_dist2002.shp"
-    gdf = gpd.read_file(shp)
-    if gdf.crs and gdf.crs.to_epsg() != 4326:
-        gdf = gdf.to_crs(epsg=4326)
-    gdf["UBIGEO"] = gdf["UBIGEO"].astype(str).str.zfill(6)
+    gdf = cargar_geo_creaciones()   # versión simplificada (GeoParquet)
 
     df = cargar_dataframe()
 
@@ -279,8 +276,10 @@ with col_mapa:
     def add_layer_crea(m, data, col_tcm_map):
         data = data.copy()
         data["_color"] = data["CAT_RIESGO"].map(COLORES_RIESGO).fillna("#CBD5E1")
+        campos_crea = ["NOMBDIST", "NOMBDEP", "ANIO", "AMB_INT",
+                       "MODALIDAD", col_tcm_map, "POB2025", "CAT_RIESGO"]
         folium.GeoJson(
-            data.__geo_interface__,
+            geojson_liviano(data, campos_crea + ["_color"]),
             style_function=lambda feat: {
                 "fillColor":   feat["properties"].get("_color", "#CBD5E1"),
                 "color":       "#1B4D5C",
@@ -288,8 +287,7 @@ with col_mapa:
                 "fillOpacity": 0.85,
             },
             tooltip=folium.GeoJsonTooltip(
-                fields   = ["NOMBDIST", "NOMBDEP", "ANIO", "AMB_INT",
-                            "MODALIDAD", col_tcm_map, "POB2025", "CAT_RIESGO"],
+                fields   = campos_crea,
                 aliases  = ["Distrito", "Dpto.", "Año creación", "Ámbito",
                             "Modalidad", f"TCM {periodo}", "Pob. 2025", "Clasificación"],
                 localize=True, sticky=False,
@@ -301,8 +299,10 @@ with col_mapa:
     def add_layer_orig(m, data):
         data = data.copy()
         data["_color"] = data["CAT_DESP"].map(COLORES_DESP).fillna("#CBD5E1")
+        campos_orig = ["NOMBDIST", "NOMBDEP", "TC_07_17",
+                       "TC_17_25", "POB2025", "CAT_DESP"]
         folium.GeoJson(
-            data.__geo_interface__,
+            geojson_liviano(data, campos_orig + ["_color"]),
             style_function=lambda feat: {
                 "fillColor":   feat["properties"].get("_color", "#CBD5E1"),
                 "color":       "#475569",
@@ -310,8 +310,7 @@ with col_mapa:
                 "fillOpacity": 0.65,
             },
             tooltip=folium.GeoJsonTooltip(
-                fields   = ["NOMBDIST", "NOMBDEP", "TC_07_17",
-                            "TC_17_25", "POB2025", "CAT_DESP"],
+                fields   = campos_orig,
                 aliases  = ["Distrito origen", "Dpto.", "TCM 07-17",
                             "TCM 17-25", "Pob. 2025", "Categoría"],
                 localize=True, sticky=False,
@@ -466,7 +465,7 @@ with col_yr:
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         barmode="overlay",
     )
-    st.plotly_chart(fig_yr, use_container_width=True)
+    st.plotly_chart(fig_yr, width="stretch")
     st.caption("Pico de creaciones: 2015 (16) y 2021 (15). "
                "Mayor % de decrecimiento en 2010 (75% — 3 de 4 creaciones).")
 
@@ -513,7 +512,7 @@ with col_mod:
         ),
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
     )
-    st.plotly_chart(fig_mod, use_container_width=True)
+    st.plotly_chart(fig_mod, width="stretch")
     st.caption("Iniciativa (IN) concentra el mayor número de creaciones "
                "con riesgo demográfico (7 de 9 casos).")
 
@@ -556,7 +555,7 @@ with col_amb:
         ),
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
     )
-    st.plotly_chart(fig_amb, use_container_width=True)
+    st.plotly_chart(fig_amb, width="stretch")
     st.caption("ACF = Áreas Críticas Fronterizas · "
                "Mayor proporción de riesgo en ACF (33%).")
 
@@ -564,105 +563,111 @@ with col_amb:
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 4 — Dos tablas detalle
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("---")
-col_t1, col_t2 = st.columns(2)
+# st.fragment: al usar estos filtros solo se re-ejecuta esta sección;
+# los mapas no se reconstruyen ni se reenvían al navegador.
+@st.fragment
+def seccion_tablas():
+    st.markdown("---")
+    col_t1, col_t2 = st.columns(2)
 
-def descarga_buttons(df_dl, nombre_base, key_sfx):
-    c1, c2 = st.columns(2)
-    with c1:
-        csv = df_dl.to_csv(index=False, encoding="utf-8-sig")
-        st.download_button(
-            "⬇️ CSV", data=csv,
-            file_name=f"{nombre_base}.csv",
-            mime="text/csv", key=f"csv_{key_sfx}",
-        )
-    with c2:
-        buf = io.BytesIO()
-        with pd.ExcelWriter(buf, engine="openpyxl") as w:
-            df_dl.to_excel(w, index=False, sheet_name=nombre_base[:31])
-        st.download_button(
-            "⬇️ Excel", data=buf.getvalue(),
-            file_name=f"{nombre_base}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key=f"xlsx_{key_sfx}",
-        )
+    def descarga_buttons(df_dl, nombre_base, key_sfx):
+        c1, c2 = st.columns(2)
+        with c1:
+            csv = a_csv(df_dl)
+            st.download_button(
+                "⬇️ CSV", data=csv,
+                file_name=f"{nombre_base}.csv",
+                mime="text/csv", key=f"csv_{key_sfx}",
+            )
+        with c2:
+            st.download_button(
+                "⬇️ Excel", data=a_excel(df_dl, nombre_base[:31]),
+                file_name=f"{nombre_base}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"xlsx_{key_sfx}",
+            )
 
-# ── Tabla 1: Creaciones en riesgo ──────────────────────────────────────────
-with col_t1:
-    st.markdown('<div class="section-title">Creaciones en riesgo demográfico</div>',
-                unsafe_allow_html=True)
+    # ── Tabla 1: Creaciones en riesgo ──────────────────────────────────────────
+    with col_t1:
+        st.markdown('<div class="section-title">Creaciones en riesgo demográfico</div>',
+                    unsafe_allow_html=True)
 
-    riesgo_cats = ["Todos"] + [
-        c for c in COLORES_RIESGO
-        if c not in ("Crecimiento sostenido", "Crecimiento",
-                     "Recuperación (↓→↑)", "Sin datos")
-    ]
-    riesgo_sel = st.selectbox("Filtrar por riesgo", riesgo_cats,
-                              key="riesgo_sel", label_visibility="collapsed")
+        riesgo_cats = ["Todos"] + [
+            c for c in COLORES_RIESGO
+            if c not in ("Crecimiento sostenido", "Crecimiento",
+                         "Recuperación (↓→↑)", "Sin datos")
+        ]
+        riesgo_sel = st.selectbox("Filtrar por riesgo", riesgo_cats,
+                                  key="riesgo_sel", label_visibility="collapsed")
 
-    cols_t1 = {
-        "UBIGEO": "Ubigeo",
-        "NOMBDEP": "Dpto.",
-        "NOMBPROV": "Provincia",
-        "NOMBDIST": "Distrito",
-        "ANIO": "Año crea.",
-        "AMB_INT": "Ámbito",
-        "MODALIDAD": "Modalidad",
-        "TIPOLOGIA": "Tipología",
-        "POB2017": "Pob. 2017",
-        "POB2025": "Pob. 2025",
-        "TC_07_17": "TCM 07-17 (%)",
-        "TC_17_25": "TCM 17-25 (%)",
-        "CAT_RIESGO": "Clasificación",
-    }
-    t1 = crea_f[[c for c in cols_t1 if c in crea_f.columns]].rename(columns=cols_t1)
+        cols_t1 = {
+            "UBIGEO": "Ubigeo",
+            "NOMBDEP": "Dpto.",
+            "NOMBPROV": "Provincia",
+            "NOMBDIST": "Distrito",
+            "ANIO": "Año crea.",
+            "AMB_INT": "Ámbito",
+            "MODALIDAD": "Modalidad",
+            "TIPOLOGIA": "Tipología",
+            "POB2017": "Pob. 2017",
+            "POB2025": "Pob. 2025",
+            "TC_07_17": "TCM 07-17 (%)",
+            "TC_17_25": "TCM 17-25 (%)",
+            "CAT_RIESGO": "Clasificación",
+        }
+        t1 = crea_f[[c for c in cols_t1 if c in crea_f.columns]].rename(columns=cols_t1)
 
-    if riesgo_sel != "Todos":
-        t1 = t1[t1["Clasificación"] == riesgo_sel]
-    else:
-        # Por defecto mostrar solo los de riesgo
-        t1 = t1[~t1["Clasificación"].isin(
-            ["Crecimiento sostenido", "Crecimiento", "Recuperación (↓→↑)", "Sin datos"]
-        )]
+        if riesgo_sel != "Todos":
+            t1 = t1[t1["Clasificación"] == riesgo_sel]
+        else:
+            # Por defecto mostrar solo los de riesgo
+            t1 = t1[~t1["Clasificación"].isin(
+                ["Crecimiento sostenido", "Crecimiento", "Recuperación (↓→↑)", "Sin datos"]
+            )]
 
-    t1_sorted = t1.sort_values("TCM 17-25 (%)")
-    st.dataframe(t1_sorted, use_container_width=True, height=260, hide_index=True)
-    descarga_buttons(t1_sorted, "creaciones_en_riesgo", "t1")
+        t1_sorted = t1.sort_values("TCM 17-25 (%)")
+        st.dataframe(t1_sorted, width="stretch", height=260, hide_index=True)
+        descarga_buttons(t1_sorted, "creaciones_en_riesgo", "t1")
 
-# ── Tabla 2: Despoblamiento persistente ────────────────────────────────────
-with col_t2:
-    st.markdown('<div class="section-title">Despoblamiento persistente — distritos de origen</div>',
-                unsafe_allow_html=True)
+    # ── Tabla 2: Despoblamiento persistente ────────────────────────────────────
+    with col_t2:
+        st.markdown('<div class="section-title">Despoblamiento persistente — distritos de origen</div>',
+                    unsafe_allow_html=True)
 
-    desp_cats = ["Todos"] + list(COLORES_DESP.keys())[:-1]
-    desp_sel  = st.selectbox("Filtrar por categoría", desp_cats,
-                             key="desp_sel", label_visibility="collapsed")
+        desp_cats = ["Todos"] + list(COLORES_DESP.keys())[:-1]
+        desp_sel  = st.selectbox("Filtrar por categoría", desp_cats,
+                                 key="desp_sel", label_visibility="collapsed")
 
-    cols_t2 = {
-        "UBIGEO": "Ubigeo",
-        "NOMBDEP": "Dpto.",
-        "NOMBPROV": "Provincia",
-        "NOMBDIST": "Distrito",
-        "REGION_NAT": "Región",
-        "TIPOLOGIA": "Tipología",
-        "POB2007": "Pob. 2007",
-        "POB2017": "Pob. 2017",
-        "POB2025": "Pob. 2025",
-        "TC_07_17": "TCM 07-17 (%)",
-        "TC_17_25": "TCM 17-25 (%)",
-        "CAT_DESP": "Categoría",
-    }
-    t2 = orig_f[[c for c in cols_t2 if c in orig_f.columns]].rename(columns=cols_t2)
+        cols_t2 = {
+            "UBIGEO": "Ubigeo",
+            "NOMBDEP": "Dpto.",
+            "NOMBPROV": "Provincia",
+            "NOMBDIST": "Distrito",
+            "REGION_NAT": "Región",
+            "TIPOLOGIA": "Tipología",
+            "POB2007": "Pob. 2007",
+            "POB2017": "Pob. 2017",
+            "POB2025": "Pob. 2025",
+            "TC_07_17": "TCM 07-17 (%)",
+            "TC_17_25": "TCM 17-25 (%)",
+            "CAT_DESP": "Categoría",
+        }
+        t2 = orig_f[[c for c in cols_t2 if c in orig_f.columns]].rename(columns=cols_t2)
 
-    if desp_sel != "Todos":
-        t2 = t2[t2["Categoría"] == desp_sel]
+        if desp_sel != "Todos":
+            t2 = t2[t2["Categoría"] == desp_sel]
 
-    t2_sorted = t2.sort_values("TCM 17-25 (%)")
-    st.dataframe(t2_sorted, use_container_width=True, height=260, hide_index=True)
-    descarga_buttons(t2_sorted, "despoblamiento_persistente_origen", "t2")
+        t2_sorted = t2.sort_values("TCM 17-25 (%)")
+        st.dataframe(t2_sorted, width="stretch", height=260, hide_index=True)
+        descarga_buttons(t2_sorted, "despoblamiento_persistente_origen", "t2")
 
 
-# ── Footer ─────────────────────────────────────────────────────────────────
+    # ── Footer ─────────────────────────────────────────────────────────────────
+
+
+seccion_tablas()
+
+
 st.markdown("---")
 st.caption(
     "Fuente: INEI Censos 2007, 2017 y 2025 · "

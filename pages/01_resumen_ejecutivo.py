@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.carga_datos import cargar_dataframe, cargar_datos_integrados
+from utils.rendimiento import geojson_liviano, a_excel, a_csv
 
 # ── Configuración ───────────────────────────────────────────────────────────
 st.set_page_config(
@@ -188,8 +189,10 @@ with col_mapa:
     col_pob_mapa   = "POB2017" if usar_0717 else "POB2025"
     label_pob_mapa = "Pob. 2017" if usar_0717 else "Pob. 2025"
 
+    campos_tooltip = ["NOMBDIST", "NOMBDEP", col_tcm,
+                      col_pob_mapa, "REGION_NAT", "TIPOLOGIA"]
     folium.GeoJson(
-        gdf_f.__geo_interface__,
+        geojson_liviano(gdf_f, campos_tooltip + ["_color"]),
         style_function=lambda feat: {
             "fillColor":   feat["properties"].get("_color", "#CBD5E1"),
             "color":       "#ffffff",
@@ -197,8 +200,7 @@ with col_mapa:
             "fillOpacity": 0.75,
         },
         tooltip=folium.GeoJsonTooltip(
-            fields   = ["NOMBDIST", "NOMBDEP", col_tcm,
-                        col_pob_mapa, "REGION_NAT", "TIPOLOGIA"],
+            fields   = campos_tooltip,
             aliases  = ["Distrito", "Departamento", f"TCM {periodo}",
                         label_pob_mapa, "Región", "Tipología"],
             localize = True,
@@ -306,7 +308,7 @@ with col_rank:
             plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
             showlegend=False,
         )
-        st.plotly_chart(fig_d, use_container_width=True)
+        st.plotly_chart(fig_d, width="stretch")
 
     with tab2:
         top_c = dep.sort_values("crec", ascending=False).head(12)
@@ -329,7 +331,7 @@ with col_rank:
             plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
             showlegend=False,
         )
-        st.plotly_chart(fig_c2, use_container_width=True)
+        st.plotly_chart(fig_c2, width="stretch")
 
     with tab3:
         # Barras apiladas: bajo TCM promedio (rojo) + sobre (azul)
@@ -372,7 +374,7 @@ with col_rank:
             "Distritos por debajo de este valor presentan un ritmo de "
             "crecimiento inferior al promedio nacional del período."
         )
-        st.plotly_chart(fig_t3, use_container_width=True)
+        st.plotly_chart(fig_t3, width="stretch")
 
 with col_evol:
     st.markdown('<div class="section-title">'
@@ -398,7 +400,7 @@ with col_evol:
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
     )
-    st.plotly_chart(fig_e, use_container_width=True)
+    st.plotly_chart(fig_e, width="stretch")
 
     st.markdown('<div class="section-title" style="margin-top:.4rem">'
                 'Comparativa porcentaje de decrecimiento, por período intercensal </div>',
@@ -429,102 +431,106 @@ with col_evol:
         legend=dict(orientation="h", y=1.2, x=0, font_size=9),
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
     )
-    st.plotly_chart(fig_c, use_container_width=True)
+    st.plotly_chart(fig_c, width="stretch")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 4 — Tabla con menú en cascada + descargas
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("---")
-st.markdown('<div class="section-title">Detalle distrital — tabla interactiva</div>',
-            unsafe_allow_html=True)
+# st.fragment: al usar los menús de la tabla solo se re-ejecuta esta sección;
+# el mapa y los gráficos no se vuelven a construir ni a enviar al navegador.
+@st.fragment
+def seccion_tabla():
+    st.markdown("---")
+    st.markdown('<div class="section-title">Detalle distrital — tabla interactiva</div>',
+                unsafe_allow_html=True)
 
-# Preparar tabla base
-cols_t = [c for c in [
-    "UBIGEO", "NOMBDEP", "NOMBPROV", "NOMBDIST", "REGION_NAT",
-    "TIPOLOGIA", "POB2007", "POB2017", "POB2025",
-    "TC_07_17", "TC_17_25", "DOBLE_DECREC", "ES_CREACION", "ANIO",
-] if c in dff.columns]
+    # Preparar tabla base
+    cols_t = [c for c in [
+        "UBIGEO", "NOMBDEP", "NOMBPROV", "NOMBDIST", "REGION_NAT",
+        "TIPOLOGIA", "POB2007", "POB2017", "POB2025",
+        "TC_07_17", "TC_17_25", "DOBLE_DECREC", "ES_CREACION", "ANIO",
+    ] if c in dff.columns]
 
-tabla_base = dff[cols_t].rename(columns={
-    "NOMBDEP":      "Departamento",
-    "NOMBPROV":     "Provincia",
-    "NOMBDIST":     "Distrito",
-    "REGION_NAT":   "Región",
-    "TIPOLOGIA":    "Tipología",
-    "TC_07_17":     "TCM 07-17 (%)",
-    "TC_17_25":     "TCM 17-25 (%)",
-    "DOBLE_DECREC": "Doble decrec.",
-    "ES_CREACION":  "Creación",
-    "ANIO":         "Año crea.",
-})
+    tabla_base = dff[cols_t].rename(columns={
+        "NOMBDEP":      "Departamento",
+        "NOMBPROV":     "Provincia",
+        "NOMBDIST":     "Distrito",
+        "REGION_NAT":   "Región",
+        "TIPOLOGIA":    "Tipología",
+        "TC_07_17":     "TCM 07-17 (%)",
+        "TC_17_25":     "TCM 17-25 (%)",
+        "DOBLE_DECREC": "Doble decrec.",
+        "ES_CREACION":  "Creación",
+        "ANIO":         "Año crea.",
+    })
 
-# ── Menú en cascada: Departamento → Provincia → Distrito ───────────────────
-c1, c2, c3 = st.columns(3)
+    # ── Menú en cascada: Departamento → Provincia → Distrito ───────────────────
+    c1, c2, c3 = st.columns(3)
 
-with c1:
-    lista_dep = ["Todos"] + sorted(tabla_base["Departamento"].dropna().unique().tolist())
-    dep_sel   = st.selectbox("Departamento", lista_dep, index=0)
+    with c1:
+        lista_dep = ["Todos"] + sorted(tabla_base["Departamento"].dropna().unique().tolist())
+        dep_sel   = st.selectbox("Departamento", lista_dep, index=0)
 
-with c2:
-    if dep_sel != "Todos":
-        provincias = sorted(
-            tabla_base[tabla_base["Departamento"] == dep_sel]["Provincia"]
-            .dropna().unique().tolist()
+    with c2:
+        if dep_sel != "Todos":
+            provincias = sorted(
+                tabla_base[tabla_base["Departamento"] == dep_sel]["Provincia"]
+                .dropna().unique().tolist()
+            )
+        else:
+            provincias = sorted(tabla_base["Provincia"].dropna().unique().tolist())
+        lista_prov = ["Todas"] + provincias
+        prov_sel   = st.selectbox("Provincia", lista_prov, index=0)
+
+    with c3:
+        mask_dist = pd.Series([True] * len(tabla_base))
+        if dep_sel  != "Todos":
+            mask_dist &= tabla_base["Departamento"] == dep_sel
+        if prov_sel != "Todas":
+            mask_dist &= tabla_base["Provincia"] == prov_sel
+        distritos  = sorted(tabla_base[mask_dist]["Distrito"].dropna().unique().tolist())
+        lista_dist = ["Todos"] + distritos
+        dist_sel   = st.selectbox("Distrito", lista_dist, index=0)
+
+    # Aplicar filtros en cascada
+    tabla = tabla_base.copy()
+    if dep_sel  != "Todos":  tabla = tabla[tabla["Departamento"] == dep_sel]
+    if prov_sel != "Todas":  tabla = tabla[tabla["Provincia"]    == prov_sel]
+    if dist_sel != "Todos":  tabla = tabla[tabla["Distrito"]     == dist_sel]
+
+    tabla_sorted = tabla.sort_values("TCM 07-17 (%)")
+
+    st.dataframe(
+        tabla_sorted,
+        width="stretch", height=280, hide_index=True,
+    )
+
+    # Descargas
+    col_dl1, col_dl2 = st.columns(2)
+    fname = f"crecimiento_{periodo.replace(' ','').replace('–','_')}"
+    if dep_sel  != "Todos":  fname += f"_{dep_sel}"
+    if prov_sel != "Todas":  fname += f"_{prov_sel}"
+
+    with col_dl1:
+        csv = a_csv(tabla_sorted)
+        st.download_button(
+            label="⬇️ Descargar CSV",
+            data=csv,
+            file_name=f"{fname}.csv",
+            mime="text/csv",
         )
-    else:
-        provincias = sorted(tabla_base["Provincia"].dropna().unique().tolist())
-    lista_prov = ["Todas"] + provincias
-    prov_sel   = st.selectbox("Provincia", lista_prov, index=0)
 
-with c3:
-    mask_dist = pd.Series([True] * len(tabla_base))
-    if dep_sel  != "Todos":
-        mask_dist &= tabla_base["Departamento"] == dep_sel
-    if prov_sel != "Todas":
-        mask_dist &= tabla_base["Provincia"] == prov_sel
-    distritos  = sorted(tabla_base[mask_dist]["Distrito"].dropna().unique().tolist())
-    lista_dist = ["Todos"] + distritos
-    dist_sel   = st.selectbox("Distrito", lista_dist, index=0)
+    with col_dl2:
+        st.download_button(
+            label="⬇️ Descargar Excel (.xlsx)",
+            data=a_excel(tabla_sorted, "Crecimiento"),
+            file_name=f"{fname}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
-# Aplicar filtros en cascada
-tabla = tabla_base.copy()
-if dep_sel  != "Todos":  tabla = tabla[tabla["Departamento"] == dep_sel]
-if prov_sel != "Todas":  tabla = tabla[tabla["Provincia"]    == prov_sel]
-if dist_sel != "Todos":  tabla = tabla[tabla["Distrito"]     == dist_sel]
 
-tabla_sorted = tabla.sort_values("TCM 07-17 (%)")
-
-st.dataframe(
-    tabla_sorted,
-    use_container_width=True, height=280, hide_index=True,
-)
-
-# Descargas
-col_dl1, col_dl2 = st.columns(2)
-fname = f"crecimiento_{periodo.replace(' ','').replace('–','_')}"
-if dep_sel  != "Todos":  fname += f"_{dep_sel}"
-if prov_sel != "Todas":  fname += f"_{prov_sel}"
-
-with col_dl1:
-    csv = tabla_sorted.to_csv(index=False, encoding="utf-8-sig")
-    st.download_button(
-        label="⬇️ Descargar CSV",
-        data=csv,
-        file_name=f"{fname}.csv",
-        mime="text/csv",
-    )
-
-with col_dl2:
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        tabla_sorted.to_excel(writer, index=False, sheet_name="Crecimiento")
-    st.download_button(
-        label="⬇️ Descargar Excel (.xlsx)",
-        data=buffer.getvalue(),
-        file_name=f"{fname}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+seccion_tabla()
 
 st.markdown("---")
 st.caption(

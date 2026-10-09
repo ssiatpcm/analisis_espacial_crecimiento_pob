@@ -13,6 +13,12 @@ ROOT       = Path(__file__).resolve().parent.parent
 F_XLSX     = ROOT / "data" / "distritos_crec_pob.xlsx"
 F_SHP      = ROOT / "data" / "total_distritos_1892.shp"
 F_CAPITALES = ROOT / "data" / "capitales_censo25_1892.xlsx"
+F_CREA_SHP  = ROOT / "data" / "totalcreaciones_dist2002.shp"
+
+# Geometrías simplificadas para la web (generadas por
+# scripts/preparar_geometrias.py). Si no existen, se usa el shapefile original.
+F_DIST_SIMPL = ROOT / "data" / "processed" / "distritos_simpl.parquet"
+F_CREA_SIMPL = ROOT / "data" / "processed" / "creaciones_simpl.parquet"
 
 
 # ── Rangos de población para las capitales ──────────────────────────────────
@@ -112,17 +118,35 @@ def cargar_capitales() -> pd.DataFrame:
     return cap
 
 
-@st.cache_data(show_spinner="Cargando capa espacial...")
-def cargar_geodataframe() -> gpd.GeoDataFrame:
+def _leer_capa(f_simpl: Path, f_shp: Path) -> gpd.GeoDataFrame:
     """
-    Carga el shapefile de distritos y lo reproyecta a WGS84 (EPSG:4326).
-    El CRS original es UTM zona 18S (EPSG:32718).
+    Lee la versión simplificada (GeoParquet, WGS84) si existe; si no,
+    el shapefile original reproyectado a WGS84.
     """
-    gdf = gpd.read_file(F_SHP)
+    if f_simpl.exists():
+        gdf = gpd.read_parquet(f_simpl)
+    else:
+        gdf = gpd.read_file(f_shp)
     gdf["UBIGEO"] = gdf["UBIGEO"].astype(str).str.zfill(6)
     if gdf.crs and gdf.crs.to_epsg() != 4326:
         gdf = gdf.to_crs(epsg=4326)
     return gdf
+
+
+@st.cache_data(show_spinner="Cargando capa espacial...")
+def cargar_geodataframe() -> gpd.GeoDataFrame:
+    """
+    Capa de distritos en WGS84 (EPSG:4326).
+    Usa data/processed/distritos_simpl.parquet (≈5 MB en GeoJSON) en lugar
+    del shapefile completo (≈73 MB), que hacía muy lento el mapa.
+    """
+    return _leer_capa(F_DIST_SIMPL, F_SHP)
+
+
+@st.cache_data(show_spinner="Cargando capa de creaciones...")
+def cargar_geo_creaciones() -> gpd.GeoDataFrame:
+    """Capa de creaciones post-2002 y distritos de origen en WGS84."""
+    return _leer_capa(F_CREA_SIMPL, F_CREA_SHP)
 
 
 @st.cache_data(show_spinner="Integrando datos espaciales...")

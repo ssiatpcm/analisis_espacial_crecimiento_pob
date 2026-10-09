@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.carga_datos import cargar_dataframe, cargar_geodataframe, cargar_capitales
+from utils.rendimiento import geojson_liviano, a_excel, a_csv, capa_puntos
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -270,8 +271,10 @@ with col_mapa:
         gdf_plot["_color"] = gdf_plot[col_pob].apply(color_mapa)
 
         # Tooltip muestra POB del año seleccionado
+        campos_tooltip = ["NOMBDIST", "NOMBDEP", col_pob, col_cat,
+                          col_brecha, "TIPOLOGIA", "REGION_NAT"]
         folium.GeoJson(
-            gdf_plot.__geo_interface__,
+            geojson_liviano(gdf_plot, campos_tooltip + ["_color"]),
             style_function=lambda feat: {
                 "fillColor":   feat["properties"].get("_color", "#CBD5E1"),
                 "color":       "#ffffff",
@@ -279,8 +282,7 @@ with col_mapa:
                 "fillOpacity": 0.85,
             },
             tooltip=folium.GeoJsonTooltip(
-                fields   = ["NOMBDIST", "NOMBDEP", col_pob, col_cat,
-                            col_brecha, "TIPOLOGIA", "REGION_NAT"],
+                fields   = campos_tooltip,
                 aliases  = ["Distrito", "Dpto.",
                             f"Pob. {anno_label}",   # dinámico según año
                             "Categoría", "Brecha vs. 4,800",
@@ -330,6 +332,7 @@ with col_mapa:
 
         m2 = base_map()
         pob_max_cap = df_cap_map[col_pob_cap_map].replace(0, np.nan).max()
+        colores, radios, tooltips = [], [], []
 
         for _, row in df_cap_map.iterrows():
             pob_v = row.get(col_pob_cap_map)
@@ -343,13 +346,14 @@ with col_mapa:
                 f"Pob. {anno_label}: {int(pob_v):,}<br>"   # dinámico
                 f"Categoría: {cat_v}"
             )
-            folium.CircleMarker(
-                location=[row["Y"], row["X"]],
-                radius=radius,
-                color="#ffffff", weight=0.5,
-                fill=True, fill_color=color, fill_opacity=0.85,
-                tooltip=folium.Tooltip(tooltip_cap, sticky=False),
-            ).add_to(m2)
+            colores.append(color)
+            radios.append(radius)
+            tooltips.append(tooltip_cap)
+
+        # Una sola capa con todos los puntos (mucho más rápida que un
+        # CircleMarker por capital)
+        pts = df_cap_map[["X", "Y"]].assign(_c=colores, _r=radios, _t=tooltips)
+        capa_puntos(m2, pts, "X", "Y", "_c", "_r", "_t")
 
         leyenda_cap = f"""
         <div style="position:fixed;bottom:14px;left:14px;z-index:1000;
@@ -392,7 +396,7 @@ with col_ref:
                  "3,500", "1,800", "1,500"],
         }
         st.dataframe(pd.DataFrame(tbl1),
-                     use_container_width=True, hide_index=True, height=262)
+                     width="stretch", hide_index=True, height=262)
         st.markdown("""
         <div class="norma-note">
           El umbral de <b>4,800 hab.</b> (dist.) y <b>1,500 hab.</b> (capital)
@@ -413,7 +417,7 @@ with col_ref:
                  "2,800", "1,400", "1,200"],
         }
         st.dataframe(pd.DataFrame(tbl2),
-                     use_container_width=True, hide_index=True, height=262)
+                     width="stretch", hide_index=True, height=262)
         st.markdown("""
         <div class="norma-note">
           Los umbrales de la Tabla N°2 son el 80% de los de la Tabla N°1
@@ -479,7 +483,7 @@ with col_nac:
         plot_bgcolor="white",
         paper_bgcolor="rgba(0,0,0,0)",
     )
-    st.plotly_chart(fig_nac, use_container_width=True)
+    st.plotly_chart(fig_nac, width="stretch")
 
     pct_nc = (df_censo[col_cat] != "Más de 4,800 hab.").sum() / total * 100
     st.caption(
@@ -535,7 +539,7 @@ with col_dep:
         plot_bgcolor="white",
         paper_bgcolor="rgba(0,0,0,0)",
     )
-    st.plotly_chart(fig_dep, use_container_width=True)
+    st.plotly_chart(fig_dep, width="stretch")
     st.caption(
         f"Censo {anno_label} · Ancash, Lima y Ayacucho concentran "
         "el mayor número de distritos que no alcanzan el umbral mínimo poblacional."
@@ -545,110 +549,114 @@ with col_dep:
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 4 — Tabla detalle
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("---")
-st.markdown('<div class="section-title">'
-            'Detalle por distrito — categoría y brecha respecto al umbral mínimo</div>',
-            unsafe_allow_html=True)
-
-cols_tabla = [
-    "UBIGEO", "NOMBDEP", "NOMBPROV", "NOMBDIST",
-    "REGION_NAT", "TIPOLOGIA",
-    "POB2017", "CAT_2017",
-    "POB2025", "CAT_2025",
-    col_brecha,
-]
-cols_tabla = [c for c in cols_tabla if c in df_censo.columns]
-
-tabla = df_censo[cols_tabla].rename(columns={
-    "NOMBDEP":   "Departamento",
-    "NOMBPROV":  "Provincia",
-    "NOMBDIST":  "Distrito",
-    "REGION_NAT": "Región",
-    "TIPOLOGIA": "Tipología",
-    "POB2017":   "Pob. 2017",
-    "CAT_2017":  "Categoría 2017",
-    "POB2025":   "Pob. 2025",
-    "CAT_2025":  "Categoría 2025",
-    col_brecha:  f"Brecha vs. 4,800 ({anno_label})",
-})
-
-cc1, cc2, cc3, cc4 = st.columns([1, 1, 1, 1])
-
-with cc1:
-    st.markdown('<div class="section-title">Departamento</div>',
+# st.fragment: al usar estos filtros solo se re-ejecuta esta sección;
+# los mapas no se reconstruyen ni se reenvían al navegador.
+@st.fragment
+def seccion_tabla():
+    st.markdown("---")
+    st.markdown('<div class="section-title">'
+                'Detalle por distrito — categoría y brecha respecto al umbral mínimo</div>',
                 unsafe_allow_html=True)
-    lista_dep = ["Todos"] + sorted(tabla["Departamento"].dropna().unique().tolist())
-    dep_sel = st.selectbox("Departamento", lista_dep, index=0,
-                           key="dep_sel_p3", label_visibility="collapsed")
-with cc2:
-    st.markdown('<div class="section-title">Provincia</div>',
-                unsafe_allow_html=True)
-    if dep_sel != "Todos":
-        provs = sorted(tabla[tabla["Departamento"] == dep_sel]["Provincia"]
-                       .dropna().unique().tolist())
-    else:
-        provs = sorted(tabla["Provincia"].dropna().unique().tolist())
-    lista_prov = ["Todas"] + provs
-    prov_sel = st.selectbox("Provincia", lista_prov, index=0,
-                            key="prov_sel_p3", label_visibility="collapsed")
-with cc3:
-    st.markdown('<div class="section-title">Distrito</div>',
-                unsafe_allow_html=True)
-    mask_d = pd.Series([True] * len(tabla), index=tabla.index)
-    if dep_sel  != "Todos":  mask_d &= tabla["Departamento"] == dep_sel
-    if prov_sel != "Todas":  mask_d &= tabla["Provincia"]    == prov_sel
-    dists      = sorted(tabla[mask_d]["Distrito"].dropna().unique().tolist())
-    lista_dist = ["Todos"] + dists
-    dist_sel = st.selectbox("Distrito", lista_dist, index=0,
-                            key="dist_sel_p3", label_visibility="collapsed")
-with cc4:
-    st.markdown('<div class="section-title">Categoría poblacional</div>',
-                unsafe_allow_html=True)
-    cat_sel = st.selectbox(
-        "Categoría", ["Todas"] + CATEGORIAS, index=0,
-        key="cat_sel_p3", label_visibility="collapsed",
+
+    cols_tabla = [
+        "UBIGEO", "NOMBDEP", "NOMBPROV", "NOMBDIST",
+        "REGION_NAT", "TIPOLOGIA",
+        "POB2017", "CAT_2017",
+        "POB2025", "CAT_2025",
+        col_brecha,
+    ]
+    cols_tabla = [c for c in cols_tabla if c in df_censo.columns]
+
+    tabla = df_censo[cols_tabla].rename(columns={
+        "NOMBDEP":   "Departamento",
+        "NOMBPROV":  "Provincia",
+        "NOMBDIST":  "Distrito",
+        "REGION_NAT": "Región",
+        "TIPOLOGIA": "Tipología",
+        "POB2017":   "Pob. 2017",
+        "CAT_2017":  "Categoría 2017",
+        "POB2025":   "Pob. 2025",
+        "CAT_2025":  "Categoría 2025",
+        col_brecha:  f"Brecha vs. 4,800 ({anno_label})",
+    })
+
+    cc1, cc2, cc3, cc4 = st.columns([1, 1, 1, 1])
+
+    with cc1:
+        st.markdown('<div class="section-title">Departamento</div>',
+                    unsafe_allow_html=True)
+        lista_dep = ["Todos"] + sorted(tabla["Departamento"].dropna().unique().tolist())
+        dep_sel = st.selectbox("Departamento", lista_dep, index=0,
+                               key="dep_sel_p3", label_visibility="collapsed")
+    with cc2:
+        st.markdown('<div class="section-title">Provincia</div>',
+                    unsafe_allow_html=True)
+        if dep_sel != "Todos":
+            provs = sorted(tabla[tabla["Departamento"] == dep_sel]["Provincia"]
+                           .dropna().unique().tolist())
+        else:
+            provs = sorted(tabla["Provincia"].dropna().unique().tolist())
+        lista_prov = ["Todas"] + provs
+        prov_sel = st.selectbox("Provincia", lista_prov, index=0,
+                                key="prov_sel_p3", label_visibility="collapsed")
+    with cc3:
+        st.markdown('<div class="section-title">Distrito</div>',
+                    unsafe_allow_html=True)
+        mask_d = pd.Series([True] * len(tabla), index=tabla.index)
+        if dep_sel  != "Todos":  mask_d &= tabla["Departamento"] == dep_sel
+        if prov_sel != "Todas":  mask_d &= tabla["Provincia"]    == prov_sel
+        dists      = sorted(tabla[mask_d]["Distrito"].dropna().unique().tolist())
+        lista_dist = ["Todos"] + dists
+        dist_sel = st.selectbox("Distrito", lista_dist, index=0,
+                                key="dist_sel_p3", label_visibility="collapsed")
+    with cc4:
+        st.markdown('<div class="section-title">Categoría poblacional</div>',
+                    unsafe_allow_html=True)
+        cat_sel = st.selectbox(
+            "Categoría", ["Todas"] + CATEGORIAS, index=0,
+            key="cat_sel_p3", label_visibility="collapsed",
+        )
+
+    # Aplicar filtros
+    if dep_sel  != "Todos":  tabla = tabla[tabla["Departamento"] == dep_sel]
+    if prov_sel != "Todas":  tabla = tabla[tabla["Provincia"]    == prov_sel]
+    if dist_sel != "Todos":  tabla = tabla[tabla["Distrito"]     == dist_sel]
+
+    col_cat_tabla = f"Categoría {anno_label}"
+    if cat_sel != "Todas" and col_cat_tabla in tabla.columns:
+        tabla = tabla[tabla[col_cat_tabla] == cat_sel]
+
+    tabla_sorted = tabla.sort_values(
+        f"Brecha vs. 4,800 ({anno_label})", ascending=True
     )
 
-# Aplicar filtros
-if dep_sel  != "Todos":  tabla = tabla[tabla["Departamento"] == dep_sel]
-if prov_sel != "Todas":  tabla = tabla[tabla["Provincia"]    == prov_sel]
-if dist_sel != "Todos":  tabla = tabla[tabla["Distrito"]     == dist_sel]
-
-col_cat_tabla = f"Categoría {anno_label}"
-if cat_sel != "Todas" and col_cat_tabla in tabla.columns:
-    tabla = tabla[tabla[col_cat_tabla] == cat_sel]
-
-tabla_sorted = tabla.sort_values(
-    f"Brecha vs. 4,800 ({anno_label})", ascending=True
-)
-
-st.dataframe(
-    tabla_sorted,
-    use_container_width=True,
-    height=300,
-    hide_index=True,
-)
-
-dl1, dl2 = st.columns(2)
-with dl1:
-    csv = tabla_sorted.to_csv(index=False, encoding="utf-8-sig")
-    st.download_button(
-        label=f"⬇️ Descargar CSV — Censo {anno_label}",
-        data=csv,
-        file_name=f"brechas_normativas_censo{anno_label}.csv",
-        mime="text/csv",
+    st.dataframe(
+        tabla_sorted,
+        width="stretch",
+        height=300,
+        hide_index=True,
     )
-with dl2:
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        tabla_sorted.to_excel(writer, index=False,
-                              sheet_name=f"Brechas_{anno_label}")
-    st.download_button(
-        label=f"⬇️ Descargar Excel — Censo {anno_label}",
-        data=buffer.getvalue(),
-        file_name=f"brechas_normativas_censo{anno_label}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+
+    dl1, dl2 = st.columns(2)
+    with dl1:
+        csv = a_csv(tabla_sorted)
+        st.download_button(
+            label=f"⬇️ Descargar CSV — Censo {anno_label}",
+            data=csv,
+            file_name=f"brechas_normativas_censo{anno_label}.csv",
+            mime="text/csv",
+        )
+    with dl2:
+        st.download_button(
+            label=f"⬇️ Descargar Excel — Censo {anno_label}",
+            data=a_excel(tabla_sorted, f"Brechas_{anno_label}"),
+            file_name=f"brechas_normativas_censo{anno_label}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+
+seccion_tabla()
+
 
 # ── Footer ──────────────────────────────────────────────────────────────────
 st.markdown("---")

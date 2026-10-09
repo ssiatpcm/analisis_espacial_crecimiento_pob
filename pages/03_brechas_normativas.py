@@ -3,14 +3,6 @@ pages/03_brechas_normativas.py
 Página 3 — Brechas normativas · TUO DS 134-2025-PCM
 Requisito poblacional mínimo · Tablas N°1 y N°2
 SSIAT / SDOT-PCM · 2026
-
-Fuentes de datos:
-    - distritos_crec_pob.xlsx  → POB2017 (Censo 2017) y POB2025 (Censo 2025)
-    - total_distritos_1892.shp → geometría distrital
-Marco normativo:
-    - Tabla N°1 (DS 191-2020-PCM): umbral creación distrital
-    - Tabla N°2 (RVM 005-2019-PCM): umbral fusión/reorganización
-    - Umbral mínimo absoluto: 4,800 hab. (tipologías B1/B2/B3 · Tabla N°1)
 """
 
 import warnings
@@ -27,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from utils.carga_datos import cargar_dataframe, cargar_geodataframe
+from utils.carga_datos import cargar_dataframe, cargar_geodataframe, cargar_capitales
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -70,11 +62,8 @@ st.markdown("""
 # ══════════════════════════════════════════════════════════════════════════════
 # CONSTANTES NORMATIVAS
 # ══════════════════════════════════════════════════════════════════════════════
-
-# Umbral mínimo absoluto para creación distrital (Tabla N°1 · B1/B2/B3)
 UMBRAL_MIN = 4_800
 
-# Rangos para el mapa y gráficos (según leyenda del mapa de referencia SSIAT)
 CATEGORIAS = [
     "Menos de 500 hab.",
     "500 a 1,500 hab.",
@@ -82,35 +71,25 @@ CATEGORIAS = [
     "Más de 4,800 hab.",
 ]
 
-# Paleta de colores — igual que el mapa de referencia
 COLORES_CAT = {
-    "Menos de 500 hab.":    "#6B0000",   # guinda oscuro
-    "500 a 1,500 hab.":     "#C0392B",   # rojo
-    "1,500 a 4,800 hab.":   "#F1948A",   # rosado
-    "Más de 4,800 hab.":    "#2E75B6",   # azul SDOT
+    "Menos de 500 hab.":    "#6B0000",
+    "500 a 1,500 hab.":     "#C0392B",
+    "1,500 a 4,800 hab.":   "#F1948A",
+    "Más de 4,800 hab.":    "#2E75B6",
     "Sin datos":            "#CBD5E1",
 }
 
-# Tabla N°1 — DS 191-2020-PCM (creación distrital)
-TABLA1 = {
-    "A0":         {"distrito": 100_000, "capital": None},
-    "A1":         {"distrito":  50_000, "capital": None},
-    "A2_cercado": {"distrito":  20_000, "capital": None},
-    "A2":         {"distrito":  20_000, "capital":  7_000},
-    "A3.1":       {"distrito":  10_000, "capital":  3_500},
-    "A3.2 y AB":  {"distrito":   5_000, "capital":  1_800},
-    "B1, B2, B3": {"distrito":   4_800, "capital":  1_500},
+COLORES_2025 = {
+    "Menos de 500 hab.":    "#6B0000",
+    "500 a 1,500 hab.":     "#C0392B",
+    "1,500 a 4,800 hab.":   "#F1948A",
+    "Más de 4,800 hab.":    "#2E75B6",
 }
-
-# Tabla N°2 — RVM 005-2019-PCM (fusión/reorganización)
-TABLA2 = {
-    "A0":         {"distrito":  80_000, "capital": None},
-    "A1":         {"distrito":  40_000, "capital": None},
-    "A2_cercado": {"distrito":  16_000, "capital": None},
-    "A2":         {"distrito":  16_000, "capital":  5_600},
-    "A3.1":       {"distrito":   8_000, "capital":  2_800},
-    "A3.2 y AB":  {"distrito":   4_000, "capital":  1_400},
-    "B1, B2, B3": {"distrito":   3_800, "capital":  1_200},
+COLORES_2017 = {
+    "Menos de 500 hab.":    "#A04040",
+    "500 a 1,500 hab.":     "#E07070",
+    "1,500 a 4,800 hab.":   "#F8C0B0",
+    "Más de 4,800 hab.":    "#7AAED6",
 }
 
 
@@ -118,11 +97,10 @@ TABLA2 = {
 # FUNCIONES
 # ══════════════════════════════════════════════════════════════════════════════
 def categorizar(pob: float) -> str:
-    """Asigna categoría poblacional según leyenda del mapa de referencia."""
-    if pd.isna(pob):         return "Sin datos"
-    if pob < 500:            return "Menos de 500 hab."
-    if pob < 1_500:          return "500 a 1,500 hab."
-    if pob < UMBRAL_MIN:     return "1,500 a 4,800 hab."
+    if pd.isna(pob):     return "Sin datos"
+    if pob < 500:        return "Menos de 500 hab."
+    if pob < 1_500:      return "500 a 1,500 hab."
+    if pob < UMBRAL_MIN: return "1,500 a 4,800 hab."
     return "Más de 4,800 hab."
 
 
@@ -138,14 +116,13 @@ def preparar_datos():
     df  = cargar_dataframe()
     gdf = cargar_geodataframe()
 
-    df["CAT_2017"]   = df["POB2017"].apply(categorizar)
-    df["CAT_2025"]   = df["POB2025"].apply(categorizar)
+    df["CAT_2017"]    = df["POB2017"].apply(categorizar)
+    df["CAT_2025"]    = df["POB2025"].apply(categorizar)
     df["BRECHA_2017"] = df["POB2017"] - UMBRAL_MIN
     df["BRECHA_2025"] = df["POB2025"] - UMBRAL_MIN
     df["CUMPLE_2017"] = df["POB2017"] >= UMBRAL_MIN
     df["CUMPLE_2025"] = df["POB2025"] >= UMBRAL_MIN
 
-    # Merge GDF con columnas de brecha
     cols_merge = [
         "UBIGEO", "POB2017", "POB2025",
         "CAT_2017", "CAT_2025",
@@ -164,6 +141,7 @@ df, gdf_m = preparar_datos()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SIDEBAR — filtro único: año censal
+# FIX: comparar anno == "2025" (el radio devuelve exactamente el string del label)
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("## ⚖️ Filtro")
@@ -172,22 +150,25 @@ with st.sidebar:
         ["2017", "2025"],
         index=1,
     )
-    usar_2025  = anno == "2025 — Censo INEI"
-    col_pob    = "POB2025"   if usar_2025 else "POB2017"
-    col_cat    = "CAT_2025"  if usar_2025 else "CAT_2017"
-    col_brecha = "BRECHA_2025" if usar_2025 else "BRECHA_2017"
-    col_cumple = "CUMPLE_2025" if usar_2025 else "CUMPLE_2017"
-    anno_label = "2025" if usar_2025 else "2017"
-    anno_otro  = "2017" if usar_2025 else "2025"
-    col_pob_otro    = "POB2017"   if usar_2025 else "POB2025"
-    col_cat_otro    = "CAT_2017"  if usar_2025 else "CAT_2025"
+    # ── CORRECCIÓN CLAVE: anno es "2017" o "2025", no contiene texto extra ──
+    usar_2025       = (anno == "2025")
+    col_pob         = "POB2025"     if usar_2025 else "POB2017"
+    col_cat         = "CAT_2025"    if usar_2025 else "CAT_2017"
+    col_brecha      = "BRECHA_2025" if usar_2025 else "BRECHA_2017"
+    col_cumple      = "CUMPLE_2025" if usar_2025 else "CUMPLE_2017"
+    anno_label      = "2025"        if usar_2025 else "2017"
+    anno_otro       = "2017"        if usar_2025 else "2025"
+    col_pob_otro    = "POB2017"     if usar_2025 else "POB2025"
+    col_cat_otro    = "CAT_2017"    if usar_2025 else "CAT_2025"
     col_cumple_otro = "CUMPLE_2017" if usar_2025 else "CUMPLE_2025"
+    # Total de distritos varía según censo
+    total_censo     = 1892          if usar_2025 else 1874
 
     st.markdown("---")
     st.markdown("""
     **Marco normativo**
     - Ley N.° 27795, Ley de Demarcación y Organización Territorial
-    - D.S. N° 134-2025-PCM, que aprueba el Texto Único Ordenado (TUO) del Reglamento de la Ley N.° 27795, aprobado por D.S. N° 191-2020-PCM
+    - D.S. N° 134-2025-PCM, TUO del Reglamento de la Ley N.° 27795
     """)
     st.caption("Umbral mínimo absoluto: **4,800 hab.** (Tabla N°1)")
 
@@ -198,21 +179,27 @@ with st.sidebar:
 st.markdown(f"""
 <div class="header-banner">
   <h2>⚖️ Brechas normativas — Requisito poblacional mínimo</h2>
-  <p>Tablas N° 1 y N° 2 del Anexo del Reglamento de la Ley N° 27795 · Año censal seleccionado:
+  <p>Tablas N° 1 y N° 2 del Anexo del Reglamento de la Ley N° 27795 · Año censal:
      <b>{anno_label}</b> · Umbral mínimo: <b>4,800 hab.</b> · SSIAT / SDOT-PCM · 2026</p>
 </div>
 """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FILA 1 — KPIs
+# FILA 1 — KPIs  (todos reactivos al año censal)
 # ══════════════════════════════════════════════════════════════════════════════
-total    = len(df)
-n_cumple = int(df[col_cumple].sum())
-n_nc     = total - n_cumple
-n_crit   = int((df[col_cat] == "Menos de 500 hab.").sum())
+# Filtrar df al universo correcto según censo
+if usar_2025:
+    df_censo = df.copy()           # 1892 distritos — todos tienen censo 2025
+else:
+    df_censo = df[df["ANIO"] <= 2017].copy()  # 1874 distritos con censo 2017
 
-# Referencia del otro año para comparar
+total    = len(df_censo)
+n_cumple = int(df_censo[col_cumple].sum())
+n_nc     = total - n_cumple
+n_crit   = int((df_censo[col_cat] == "Menos de 500 hab.").sum())
+
+# Referencia del otro año (sobre el mismo universo df completo para comparar)
 n_cumple_otro = int(df[col_cumple_otro].sum())
 diff_cumple   = n_cumple - n_cumple_otro
 signo         = "+" if diff_cumple >= 0 else ""
@@ -220,13 +207,13 @@ signo         = "+" if diff_cumple >= 0 else ""
 k1, k2, k3, k4 = st.columns(4)
 for col_st, cls, label, valor, sub, color in [
     (k1, "blue",  "🗺️ Total distritos",
-     f"{1874 if not usar_2025 else 1892:,}",
-     "Base censo 2017" if not usar_2025 else "Base censo 2025", "#1E40AF"),
-    (k2, "green", f"✅ Distritos Cumplen ≥ 4,800 hab.",
+     f"{total_censo:,}",
+     f"Base Censo INEI {anno_label}", "#1E40AF"),
+    (k2, "green", "✅ Cumplen ≥ 4,800 hab.",
      f"{n_cumple:,}",
      f"{n_cumple/total*100:.1f}% · {signo}{diff_cumple} vs. {anno_otro}",
      "#166534"),
-    (k3, "red",   f"❌ Distritos No cumplen < 4,800 hab.",
+    (k3, "red",   "❌ No cumplen < 4,800 hab.",
      f"{n_nc:,}",
      f"{n_nc/total*100:.1f}% · principalmente Sierra",
      "#991B1B"),
@@ -247,7 +234,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FILA 2 — Mapa + Tabla de umbrales + Variación
+# FILA 2 — Mapa + Tablas de umbrales
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="section-title">Distribución espacial — requisito poblacional mínimo</div>',
             unsafe_allow_html=True)
@@ -272,12 +259,13 @@ with col_mapa:
         ).add_to(m)
         return m
 
-    # ── Tab 1: Mapa distritos (existente) ───────────────────────────────
+    # ── Tab 1: Mapa distritos ───────────────────────────────────────────────
     with tab_dist:
         m = base_map()
         gdf_plot = gdf_m.copy()
         gdf_plot["_color"] = gdf_plot[col_pob].apply(color_mapa)
 
+        # Tooltip muestra POB del año seleccionado
         folium.GeoJson(
             gdf_plot.__geo_interface__,
             style_function=lambda feat: {
@@ -289,7 +277,8 @@ with col_mapa:
             tooltip=folium.GeoJsonTooltip(
                 fields   = ["NOMBDIST", "NOMBDEP", col_pob, col_cat,
                             col_brecha, "TIPOLOGIA", "REGION_NAT"],
-                aliases  = ["Distrito", "Dpto.", f"Pob. {anno_label}",
+                aliases  = ["Distrito", "Dpto.",
+                            f"Pob. {anno_label}",   # dinámico según año
                             "Categoría", "Brecha vs. 4,800",
                             "Tipología", "Región"],
                 localize = True, sticky = False,
@@ -305,7 +294,7 @@ with col_mapa:
           <b>Distritos que NO cumplen:</b><br>
           <span style="color:#6B0000">&#9632;</span> Menos de 500 hab.<br>
           <span style="color:#C0392B">&#9632;</span> 500 a 1,500 hab.<br>
-          <span style="color:#F1948A">&#9632;</span> Más de 1,500 hab.<br>
+          <span style="color:#F1948A">&#9632;</span> 1,500 a 4,800 hab.<br>
           <b>Distritos que SÍ cumplen:</b><br>
           <span style="color:#2E75B6">&#9632;</span> Más de 4,800 hab.<br>
           <span style="color:#CBD5E1">&#9632;</span> Sin datos<br>
@@ -314,10 +303,10 @@ with col_mapa:
         m.get_root().html.add_child(folium.Element(leyenda_dist))
         st_folium(m, width=None, height=420, returned_objects=[])
 
-    # ── Tab 2: Mapa capitales — umbral mínimo 1,500 hab. ────────────────
+    # ── Tab 2: Mapa capitales ───────────────────────────────────────────────
     with tab_cap:
-        from utils.carga_datos import cargar_capitales
         df_cap_map = cargar_capitales()
+        # POB de capital según año seleccionado
         col_pob_cap_map = "POB2025" if usar_2025 else "POB2017"
 
         COLORES_CAP = {
@@ -329,10 +318,10 @@ with col_mapa:
         }
 
         def cat_cap(pob):
-            if pd.isna(pob):  return "Sin datos"
-            if pob < 250:     return "Menos de 250 hab."
-            if pob < 750:     return "250 a 750 hab."
-            if pob < 1500:    return "750 a 1,500 hab."
+            if pd.isna(pob): return "Sin datos"
+            if pob < 250:    return "Menos de 250 hab."
+            if pob < 750:    return "250 a 750 hab."
+            if pob < 1500:   return "750 a 1,500 hab."
             return "Más de 1,500 hab."
 
         m2 = base_map()
@@ -347,7 +336,7 @@ with col_mapa:
             tooltip_cap = (
                 f"<b>{row['NOMBCCPP']}</b><br>"
                 f"{row['NOMBDIST']} — {row['NOMBDEP']}<br>"
-                f"Pob. {anno_label}: {int(pob_v):,}<br>"
+                f"Pob. {anno_label}: {int(pob_v):,}<br>"   # dinámico
                 f"Categoría: {cat_v}"
             )
             folium.CircleMarker(
@@ -377,7 +366,7 @@ with col_mapa:
 
 
 with col_ref:
-    # Tablas de umbrales separadas en pestañas
+    # ── Tablas N°1 y N°2 sin columna Área geográfica ───────────────────────
     st.markdown('<div class="section-title">Umbrales normativos</div>',
                 unsafe_allow_html=True)
 
@@ -391,14 +380,6 @@ with col_ref:
         tbl1 = {
             "Tipología": ["A0", "A1", "A2 (cercado)", "A2 (no cercado)",
                           "A3.1", "A3.2 y AB", "B1, B2, B3"],
-            "Área geográfica":
-                ["Área Metropolitana Lima-Callao",
-                 "Ciudad Capital de Región o Ciudad Mayor Principal",
-                 "Ciudad Mayor (cercado de prov.)",
-                 "Ciudad Mayor (no cercado de prov.)",
-                 "Ciudad Intermedia Principal",
-                 "Ciudad Intermedia / Villa",
-                 "Pueblo / Caserío / Centro Poblado Rural"],
             "Pob. mín. distrito":
                 ["100,000", "50,000", "20,000", "20,000",
                  "10,000", "5,000", "4,800"],
@@ -420,14 +401,6 @@ with col_ref:
         tbl2 = {
             "Tipología": ["A0", "A1", "A2 (cercado)", "A2 (no cercado)",
                           "A3.1", "A3.2 y AB", "B1, B2, B3"],
-            "Área geográfica":
-                ["Área Metropolitana Lima-Callao",
-                 "Ciudad Capital de Región o Ciudad Mayor Principal",
-                 "Ciudad Mayor (cercado de prov.)",
-                 "Ciudad Mayor (no cercado de prov.)",
-                 "Ciudad Intermedia Principal",
-                 "Ciudad Intermedia / Villa",
-                 "Pueblo / Caserío / Centro Poblado Rural"],
             "Pob. mín. distrito":
                 ["80,000", "40,000", "16,000", "16,000",
                  "8,000", "4,000", "3,800"],
@@ -445,7 +418,6 @@ with col_ref:
         </div>""", unsafe_allow_html=True)
 
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 3 — Gráfico nacional + Gráfico por departamento
 # ══════════════════════════════════════════════════════════════════════════════
@@ -455,28 +427,13 @@ st.markdown('<div class="section-title">Análisis por volumen poblacional</div>'
 
 col_nac, col_dep = st.columns(2)
 
-# ── Gráfico 1: Nacional 2017 vs 2025 ───────────────────────────────────────
 with col_nac:
     st.markdown('<div class="section-title">Distritos por rango de volumen poblacional, según 2017 y 2025</div>',
                 unsafe_allow_html=True)
 
     counts_17 = df["CAT_2017"].value_counts().reindex(CATEGORIAS, fill_value=0)
     counts_25 = df["CAT_2025"].value_counts().reindex(CATEGORIAS, fill_value=0)
-    colores   = [COLORES_CAT[c] for c in CATEGORIAS]
 
-    # Tonalidades sólidas 2025 / atenuadas 2017 — una barra por cada categoría
-    COLORES_2025 = {
-        "Menos de 500 hab.":    "#6B0000",
-        "500 a 1,500 hab.":     "#C0392B",
-        "1,500 a 4,800 hab.":   "#F1948A",
-        "Más de 4,800 hab.":    "#2E75B6",
-    }
-    COLORES_2017 = {
-        "Menos de 500 hab.":    "#A04040",
-        "500 a 1,500 hab.":     "#E07070",
-        "1,500 a 4,800 hab.":   "#F8C0B0",
-        "Más de 4,800 hab.":    "#7AAED6",
-    }
     fig_nac = go.Figure()
     fig_nac.add_trace(go.Bar(
         name="2025",
@@ -520,25 +477,24 @@ with col_nac:
     )
     st.plotly_chart(fig_nac, use_container_width=True)
 
-    pct_nc = (df[col_cat] != "Más de 4,800 hab.").sum() / total * 100
+    pct_nc = (df_censo[col_cat] != "Más de 4,800 hab.").sum() / total * 100
     st.caption(
         f"Censo {anno_label}: el **{pct_nc:.1f}%** de los distritos "
-        f"no alcanza el umbral mínimo poblacional de 4,800 hab. establecido en "
-        f"la Tabla N°1 del Anexo del Reglamento de la Ley N° 27795."
+        f"no alcanza el umbral mínimo de 4,800 hab. "
+        f"(Tabla N°1, Anexo del Reglamento de la Ley N° 27795)."
     )
 
 
-# ── Gráfico 2: Top 12 departamentos con más incumplidores ──────────────────
 with col_dep:
     st.markdown('<div class="section-title">'
-                'Top 12 departamentos · distritos que no cumplen</div>',
+                f'Top 12 departamentos · distritos que no cumplen — Censo {anno_label}</div>',
                 unsafe_allow_html=True)
 
-    dep_g = df.groupby("NOMBDEP").agg(
-        total          = ("UBIGEO", "count"),
-        n_menos500     = (col_cat,  lambda x: (x == "Menos de 500 hab.").sum()),
-        n_500_1500     = (col_cat,  lambda x: (x == "500 a 1,500 hab.").sum()),
-        n_1500_4800    = (col_cat,  lambda x: (x == "1,500 a 4,800 hab.").sum()),
+    dep_g = df_censo.groupby("NOMBDEP").agg(
+        total       = ("UBIGEO", "count"),
+        n_menos500  = (col_cat, lambda x: (x == "Menos de 500 hab.").sum()),
+        n_500_1500  = (col_cat, lambda x: (x == "500 a 1,500 hab.").sum()),
+        n_1500_4800 = (col_cat, lambda x: (x == "1,500 a 4,800 hab.").sum()),
     ).reset_index()
     dep_g["n_inc"] = dep_g["n_menos500"] + dep_g["n_500_1500"] + dep_g["n_1500_4800"]
     dep_g = dep_g.sort_values("n_inc", ascending=True).tail(12)
@@ -576,13 +532,15 @@ with col_dep:
         paper_bgcolor="rgba(0,0,0,0)",
     )
     st.plotly_chart(fig_dep, use_container_width=True)
-    st.caption(f"Censo {anno_label} · Ancash, Lima y Ayacucho concentran "
-               "el mayor número de distritos que no alcanzan el umbral mínimo poblacional.")
+    st.caption(
+        f"Censo {anno_label} · Ancash, Lima y Ayacucho concentran "
+        "el mayor número de distritos que no alcanzan el umbral mínimo poblacional."
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FILA 4 — Tabla detalle
-# ════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
 st.markdown('<div class="section-title">'
             'Detalle por distrito — categoría y brecha respecto al umbral mínimo</div>',
@@ -595,22 +553,21 @@ cols_tabla = [
     "POB2025", "CAT_2025",
     col_brecha,
 ]
-cols_tabla = [c for c in cols_tabla if c in df.columns]
+cols_tabla = [c for c in cols_tabla if c in df_censo.columns]
 
-tabla = df[cols_tabla].rename(columns={
-    "NOMBDEP":     "Departamento",
-    "NOMBPROV":    "Provincia",
-    "NOMBDIST":    "Distrito",
-    "REGION_NAT":  "Región",
-    "TIPOLOGIA":   "Tipología",
-    "POB2017":     "Pob. 2017",
-    "CAT_2017":    "Categoría 2017",
-    "POB2025":     "Pob. 2025",
-    "CAT_2025":    "Categoría 2025",
-    col_brecha:    f"Brecha vs. 4,800 ({anno_label})",
+tabla = df_censo[cols_tabla].rename(columns={
+    "NOMBDEP":   "Departamento",
+    "NOMBPROV":  "Provincia",
+    "NOMBDIST":  "Distrito",
+    "REGION_NAT": "Región",
+    "TIPOLOGIA": "Tipología",
+    "POB2017":   "Pob. 2017",
+    "CAT_2017":  "Categoría 2017",
+    "POB2025":   "Pob. 2025",
+    "CAT_2025":  "Categoría 2025",
+    col_brecha:  f"Brecha vs. 4,800 ({anno_label})",
 })
 
-# Menú en cascada + filtro por categoría
 cc1, cc2, cc3, cc4 = st.columns([1, 1, 1, 1])
 
 with cc1:
@@ -692,5 +649,6 @@ with dl2:
 # ── Footer ──────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption(
-    "Fuente: INEI - Censos 2017 y 2025. Tipología de Distritos - SDOT-PCM 2025 · Elaborado por SSIAT · SDOT-PCM · 2026"
+    "Fuente: INEI — Censos Nacionales 2017 y 2025 · "
+    "Tipología de Distritos SDOT-PCM 2025 · Elaborado por SSIAT · SDOT-PCM · 2026"
 )

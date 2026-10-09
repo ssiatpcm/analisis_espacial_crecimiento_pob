@@ -189,10 +189,14 @@ st.markdown(f"""
 # FILA 1 — KPIs  (todos reactivos al año censal)
 # ══════════════════════════════════════════════════════════════════════════════
 # Filtrar df al universo correcto según censo
+# NOTA: ANIO = año de creación del distrito (solo tienen valor los creados
+# post-2002). Los 1,828 distritos preexistentes tienen ANIO = NaN.
+# Universo 2017 = distritos con ANIO nulo (pre-2002) + creados hasta 2017
+# Universo 2025 = todos los 1,892 distritos
 if usar_2025:
-    df_censo = df.copy()           # 1892 distritos — todos tienen censo 2025
+    df_censo = df.copy()           # 1,892 distritos
 else:
-    df_censo = df[df["ANIO"] <= 2017].copy()  # 1874 distritos con censo 2017
+    df_censo = df[df["ANIO"].isna() | (df["ANIO"] <= 2017)].copy()  # 1,874
 
 total    = len(df_censo)
 n_cumple = int(df_censo[col_cumple].sum())
